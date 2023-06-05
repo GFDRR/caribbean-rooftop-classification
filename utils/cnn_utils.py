@@ -174,13 +174,13 @@ def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
     return epoch_results, (confusion_matrix, cm_metrics, cm_report)
 
 
-def get_transforms(size):
+def get_transforms(size, sq_size=100):
     imagenet_mean, imagenet_std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
 
     return {
         "train": transforms.Compose(
             [
-                SquarePad(size),
+                SquarePad(sq_size),
                 transforms.Resize(size),
                 transforms.RandomRotation((-90, 90)),
                 transforms.RandomHorizontalFlip(),
@@ -191,7 +191,7 @@ def get_transforms(size):
         ),
         "test": transforms.Compose(
             [
-                SquarePad(size),
+                SquarePad(sq_size),
                 transforms.Resize(size),
                 transforms.CenterCrop(size),
                 transforms.ToTensor(),
