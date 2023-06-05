@@ -1,6 +1,9 @@
+import os
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
+from PIL import Image
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
@@ -10,6 +13,7 @@ from torch.utils.data import Dataset, Subset
 
 import torchvision
 from torchvision import datasets, models, transforms
+import torchvision.transforms.functional as F
 from torchvision.models import (
     ResNet18_Weights,
     ResNet34_Weights,
@@ -19,49 +23,90 @@ from torchvision.models import (
 import sys
 sys.path.insert(0, './utils/')
 import eval_utils
+SEED = 42
 
 
 class CaribbeanDataset(Dataset):
-    def __init__(self, dataset, transform=None):
+    def __init__(self, dataset, image_folder, attribute, classes, transform=None):
         self.dataset = dataset
+        self.image_folder = image_folder
+        self.attribute = attribute
         self.transform = transform
+        self.class_encoding = {
+            class_: index
+            for index, class_ in enumerate(classes)
+        }
+        print(self.class_encoding)
 
     def __getitem__(self, index):
+        item = self.dataset.iloc[index]
+        filename = item['filename']
+        filename = os.path.join(
+            self.image_folder,  
+            self.attribute,
+            item['label'],
+            filename
+        )
+        image = Image.open(filename).convert('RGB')
         if self.transform:
-            x = self.transform(self.dataset[index][0])
-        else:
-            x = self.dataset[index][0]
-        y = self.dataset[index][1]
+            x = self.transform(image)
+        y = self.class_encoding[item['label']]
         return x, y
     
     def __len__(self):
         return len(self.dataset)
+    
+    
+class SquarePad:
+    # Source: https://www.grepper.com/answers/353879/pytorch+pad+to+square
+    def __init__(self, size=None):
+        self.size = size
+        
+    def __call__(self, image):
+        max_wh = max(max(image.size), self.size)
+        p_left, p_top = [(max_wh - s) // 2 for s in image.size]
+        p_right, p_bottom = [max_wh - (s + pad) for s, pad in zip(image.size, [p_left, p_top])]
+        padding = (p_left, p_top, p_right, p_bottom)
+        return F.pad(image, padding, 0, 'constant')
+    
 
-def load_dataset(data_dir, config, phases, size=224, train_size=0.8):
+def visualize_data(data, data_loader, phase='test', n=4):
+    imagenet_mean, imagenet_std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+    inputs, classes = next(iter(data_loader[phase]))
+    fig, axes = plt.subplots(n, n, figsize=(6,6))
+
+    key_list = list(data[phase].class_encoding.keys())
+    val_list = list(data[phase].class_encoding.values())
+
+    for i in range(n):
+        for j in range(n):
+            image = inputs[i * n + j].numpy().transpose((1, 2, 0))
+            image = np.clip(np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1)
+
+            title = key_list[val_list.index(classes[i * n + j])]
+            axes[i, j].imshow(image)
+            axes[i, j].set_title(title, fontdict={'fontsize': 7})
+            axes[i, j].axis('off')
+
     
-    # Apply transforms to the (full) dataset
-    dataset = datasets.ImageFolder(data_dir)
+def load_dataset(config, phases, size=224):
+    csv_file = os.path.join(
+        config['csv_dir'], f"{config['attribute']}.csv"
+    )
+    dataset = pd.read_csv(csv_file)
     transforms = get_transforms(size=size)
-    classes = dataset.classes
-    
-    print(classes)
-    print(dataset.class_to_idx)
+    classes = list(dataset.label.unique())
     
     data = {
-        phase: CaribbeanDataset(dataset, transforms[phase])
-        for phase in phases
-    }
-    
-    # Randomly split the dataset into 80% train / 20% test 
-    # by subsetting the transformed datasets into train and test sets
-    
-    indices = list(range(len(dataset)))
-    split = int(train_size * len(dataset))
-    np.random.shuffle(indices)
-    
-    split_indices = {'train': indices[:split], 'test': indices[split:]}
-    data = {
-        phase: Subset(data[phase], indices=split_indices[phase])
+        phase: CaribbeanDataset(
+            dataset[
+                dataset.dataset==phase
+            ].reset_index(drop=True), 
+            config['data_dir'],
+            config['attribute'],
+            classes,
+            transforms[phase]
+        )
         for phase in phases
     }
     
@@ -76,6 +121,7 @@ def load_dataset(data_dir, config, phases, size=224, train_size=0.8):
     }
     
     return data, data_loader, classes
+
     
 def train(data_loader, model, criterion, optimizer, scheduler, device, wandb=None):
     model.train()
@@ -143,24 +189,18 @@ def get_transforms(size):
     return {
         "train": transforms.Compose(
             [
-                transforms.RandomResizedCrop(size),
+                SquarePad(size),
+                transforms.Resize(size),
+                transforms.RandomRotation((-90, 90)),
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomVerticalFlip(),
-                transforms.RandomRotation((0,360)),
-                transforms.ToTensor(),
-                transforms.Normalize(imagenet_mean, imagenet_std)
-            ]
-        ),
-        "val": transforms.Compose(
-            [
-                transforms.Resize(size),
-                transforms.CenterCrop(size),
                 transforms.ToTensor(),
                 transforms.Normalize(imagenet_mean, imagenet_std)
             ]
         ),
         "test": transforms.Compose(
             [
+                SquarePad(size),
                 transforms.Resize(size),
                 transforms.CenterCrop(size),
                 transforms.ToTensor(),
@@ -217,3 +257,65 @@ def load_model(
         )
    
     return model, criterion, optimizer, scheduler
+
+
+def generate_train_test(
+    folder_path, 
+    column, 
+    out_dir,
+    test_size,
+    test_iso=None,
+    stratified=True,
+    verbose = True
+):
+    folder_dir = os.path.join(folder_path, column)
+    folders = [folder.name for folder in os.scandir(folder_dir)]
+    data = []
+    
+    for row, folder in enumerate(folders):
+        filepath = os.path.join(folder_dir, folder)
+        files = os.listdir(filepath)
+        
+        for file in files:
+            iso = file.split('_')[0]
+            data.append([iso, file, folder])
+        
+    data = pd.DataFrame(data, columns=['iso', 'filename', 'label'])
+    data['dataset'] = None
+    
+    total_size = len(data)
+    test_size = int(total_size*test_size)
+    
+    test = data.copy()
+    if test_iso != None:
+        test = data[data.iso == test_iso]
+    
+    if stratified:
+        value_counts = data.label.value_counts().items()
+        for label, count in value_counts:
+            subtest = test[test.label == label]
+            subtest_size = int(test_size*(count/total_size))
+            subtest_files = subtest.sample(subtest_size, random_state=SEED).filename.values
+            data.loc[data['filename'].isin(subtest_files), 'dataset'] = 'test'
+            
+    data.dataset = data.dataset.fillna('train')
+            
+    if verbose:
+        counts = data.label.value_counts()
+        perc = data.label.value_counts(normalize=True)
+        value_counts = pd.concat([counts, perc], axis=1, keys=['counts', 'percentage'])
+        print(value_counts)
+        
+        subcounts = pd.DataFrame(data.groupby(["dataset", "label"]).size().reset_index())
+        subcounts.columns = ['dataset', 'label', 'count']
+        subcounts['percentage'] = subcounts[subcounts.dataset == 'test']['count']/test_size
+        subcounts = subcounts.set_index(['dataset', 'label'])
+        print(subcounts)
+    
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+        
+    out_file = os.path.join(out_dir, f'{column}.csv')
+    data.to_csv(out_file, index=False)
+    
+    return data
