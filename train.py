@@ -41,7 +41,7 @@ def main(c):
     # Load dataset    
     phases = ["train", "test"]
     data, data_loader, classes = cnn_utils.load_dataset(
-        c['data_dir'], config=c, phases=phases, train_size=0.8
+        config=c, phases=phases
     )   
     print("Train/test sizes: {}/{}".format(len(data['train']), len(data['test'])))
     for phase in phases:
