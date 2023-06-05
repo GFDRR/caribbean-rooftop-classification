@@ -1,4 +1,6 @@
-data_dir: './data/rasters/Tiles/ortho/roof_material/'
+data_dir: './data/rasters/Tiles/ortho/'
+csv_dir: './data/csv/'
+attribute: 'roof_material'
 exp_name: 'exp-01'
 batch_size: 32
 n_workers: 4
