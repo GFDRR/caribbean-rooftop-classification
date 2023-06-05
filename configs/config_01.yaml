@@ -1,0 +1,16 @@
+data_dir: './data/rasters/Tiles/ortho/roof_material/'
+exp_name: 'exp-01'
+batch_size: 32
+n_workers: 4
+n_epochs: 30
+
+model: "resnet50"
+pretrained: True
+scheduler: "ReduceLROnPlateau"
+optimizer: "Adam"
+lr: 0.0001
+momentum: 0.9
+gamma: 0.1
+step_size: None
+patience: 5
+dropout: 0.50
