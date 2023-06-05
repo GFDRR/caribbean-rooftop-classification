@@ -1,4 +1,5 @@
 import os
+import sys
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
@@ -14,15 +15,11 @@ from torch.utils.data import Dataset, Subset
 import torchvision
 from torchvision import datasets, models, transforms
 import torchvision.transforms.functional as F
-from torchvision.models import (
-    ResNet18_Weights,
-    ResNet34_Weights,
-    ResNet50_Weights
-)
+from torchvision.models import ResNet18_Weights, ResNet34_Weights, ResNet50_Weights
 
-import sys
-sys.path.insert(0, './utils/')
+sys.path.insert(0, "./utils/")
 import eval_utils
+
 SEED = 42
 
 
@@ -32,48 +29,44 @@ class CaribbeanDataset(Dataset):
         self.image_folder = image_folder
         self.attribute = attribute
         self.transform = transform
-        self.class_encoding = {
-            class_: index
-            for index, class_ in enumerate(classes)
-        }
+        self.class_encoding = {class_: index for index, class_ in enumerate(classes)}
         print(self.class_encoding)
 
     def __getitem__(self, index):
         item = self.dataset.iloc[index]
-        filename = item['filename']
+        filename = item["filename"]
         filename = os.path.join(
-            self.image_folder,  
-            self.attribute,
-            item['label'],
-            filename
+            self.image_folder, self.attribute, item["label"], filename
         )
-        image = Image.open(filename).convert('RGB')
+        image = Image.open(filename).convert("RGB")
         if self.transform:
             x = self.transform(image)
-        y = self.class_encoding[item['label']]
+        y = self.class_encoding[item["label"]]
         return x, y
-    
+
     def __len__(self):
         return len(self.dataset)
-    
-    
+
+
 class SquarePad:
     # Source: https://www.grepper.com/answers/353879/pytorch+pad+to+square
     def __init__(self, size=None):
         self.size = size
-        
+
     def __call__(self, image):
         max_wh = max(max(image.size), self.size)
         p_left, p_top = [(max_wh - s) // 2 for s in image.size]
-        p_right, p_bottom = [max_wh - (s + pad) for s, pad in zip(image.size, [p_left, p_top])]
+        p_right, p_bottom = [
+            max_wh - (s + pad) for s, pad in zip(image.size, [p_left, p_top])
+        ]
         padding = (p_left, p_top, p_right, p_bottom)
-        return F.pad(image, padding, 0, 'constant')
-    
+        return F.pad(image, padding, 0, "constant")
 
-def visualize_data(data, data_loader, phase='test', n=4):
+
+def visualize_data(data, data_loader, phase="test", n=4):
     imagenet_mean, imagenet_std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
     inputs, classes = next(iter(data_loader[phase]))
-    fig, axes = plt.subplots(n, n, figsize=(6,6))
+    fig, axes = plt.subplots(n, n, figsize=(6, 6))
 
     key_list = list(data[phase].class_encoding.keys())
     val_list = list(data[phase].class_encoding.values())
@@ -81,48 +74,46 @@ def visualize_data(data, data_loader, phase='test', n=4):
     for i in range(n):
         for j in range(n):
             image = inputs[i * n + j].numpy().transpose((1, 2, 0))
-            image = np.clip(np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1)
+            image = np.clip(
+                np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1
+            )
 
             title = key_list[val_list.index(classes[i * n + j])]
             axes[i, j].imshow(image)
-            axes[i, j].set_title(title, fontdict={'fontsize': 7})
-            axes[i, j].axis('off')
+            axes[i, j].set_title(title, fontdict={"fontsize": 7})
+            axes[i, j].axis("off")
 
-    
+
 def load_dataset(config, phases, size=224):
-    csv_file = os.path.join(
-        config['csv_dir'], f"{config['attribute']}.csv"
-    )
+    csv_file = os.path.join(config["csv_dir"], f"{config['attribute']}.csv")
     dataset = pd.read_csv(csv_file)
     transforms = get_transforms(size=size)
     classes = list(dataset.label.unique())
-    
+
     data = {
         phase: CaribbeanDataset(
-            dataset[
-                dataset.dataset==phase
-            ].reset_index(drop=True), 
-            config['data_dir'],
-            config['attribute'],
+            dataset[dataset.dataset == phase].reset_index(drop=True),
+            config["data_dir"],
+            config["attribute"],
             classes,
-            transforms[phase]
+            transforms[phase],
         )
         for phase in phases
     }
-    
+
     data_loader = {
         phase: torch.utils.data.DataLoader(
-            data[phase], 
-            batch_size=config['batch_size'], 
-            num_workers=config['n_workers'],
-            shuffle=True
+            data[phase],
+            batch_size=config["batch_size"],
+            num_workers=config["n_workers"],
+            shuffle=True,
         )
         for phase in phases
     }
-    
+
     return data, data_loader, classes
 
-    
+
 def train(data_loader, model, criterion, optimizer, scheduler, device, wandb=None):
     model.train()
 
@@ -143,14 +134,14 @@ def train(data_loader, model, criterion, optimizer, scheduler, device, wandb=Non
 
             y_actuals.extend(labels.cpu().numpy().tolist())
             y_preds.extend(preds.data.cpu().numpy().tolist())
-    
+
     epoch_results = eval_utils.evaluate(y_actuals, y_preds)
     learning_rate = optimizer.param_groups[0]["lr"]
-    scheduler.step(epoch_results['f1_score'])
+    scheduler.step(epoch_results["f1_score"])
     print(epoch_results, learning_rate)
 
     if wandb is not None:
-        wandb.log({'train_' + k: v for k, v in epoch_results.items()})
+        wandb.log({"train_" + k: v for k, v in epoch_results.items()})
     return epoch_results
 
 
@@ -171,7 +162,7 @@ def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
 
         y_actuals.extend(labels.cpu().numpy().tolist())
         y_preds.extend(preds.data.cpu().numpy().tolist())
-    
+
     epoch_results = eval_utils.evaluate(y_actuals, y_preds)
     confusion_matrix, cm_metrics, cm_report = eval_utils.get_confusion_matrix(
         y_actuals, y_preds, class_names
@@ -179,7 +170,7 @@ def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
     print(epoch_results)
 
     if wandb is not None:
-        wandb.log({'val_' + k: v for k, v in epoch_results.items()})
+        wandb.log({"val_" + k: v for k, v in epoch_results.items()})
     return epoch_results, (confusion_matrix, cm_metrics, cm_report)
 
 
@@ -195,7 +186,7 @@ def get_transforms(size):
                 transforms.RandomHorizontalFlip(),
                 transforms.RandomVerticalFlip(),
                 transforms.ToTensor(),
-                transforms.Normalize(imagenet_mean, imagenet_std)
+                transforms.Normalize(imagenet_mean, imagenet_std),
             ]
         ),
         "test": transforms.Compose(
@@ -204,7 +195,7 @@ def get_transforms(size):
                 transforms.Resize(size),
                 transforms.CenterCrop(size),
                 transforms.ToTensor(),
-                transforms.Normalize(imagenet_mean, imagenet_std)
+                transforms.Normalize(imagenet_mean, imagenet_std),
             ]
         ),
     }
@@ -232,15 +223,14 @@ def load_model(
         elif model_type == "resnet50":
             model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
         num_ftrs = model.fc.in_features
-        
+
         if dropout > 0:
             model.fc = nn.Sequential(
-                nn.Dropout(dropout),
-                nn.Linear(num_ftrs, n_classes)
+                nn.Dropout(dropout), nn.Linear(num_ftrs, n_classes)
             )
         else:
             model.fc = nn.Linear(num_ftrs, n_classes)
-        
+
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
 
@@ -248,74 +238,80 @@ def load_model(
         optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
     elif optimizer_type == "Adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    
+
     if scheduler_type == "StepLR":
         scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
     elif scheduler_type == "ReduceLROnPlateau":
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, factor=0.1, patience=patience
         )
-   
+
     return model, criterion, optimizer, scheduler
 
 
 def generate_train_test(
-    folder_path, 
-    column, 
+    folder_path,
+    column,
     out_dir,
     test_size,
     test_iso=None,
     stratified=True,
-    verbose = True
+    verbose=True,
 ):
     folder_dir = os.path.join(folder_path, column)
     folders = [folder.name for folder in os.scandir(folder_dir)]
     data = []
-    
+
     for row, folder in enumerate(folders):
         filepath = os.path.join(folder_dir, folder)
         files = os.listdir(filepath)
-        
+
         for file in files:
-            iso = file.split('_')[0]
+            iso = file.split("_")[0]
             data.append([iso, file, folder])
-        
-    data = pd.DataFrame(data, columns=['iso', 'filename', 'label'])
-    data['dataset'] = None
-    
+
+    data = pd.DataFrame(data, columns=["iso", "filename", "label"])
+    data["dataset"] = None
+
     total_size = len(data)
-    test_size = int(total_size*test_size)
-    
+    test_size = int(total_size * test_size)
+
     test = data.copy()
     if test_iso != None:
         test = data[data.iso == test_iso]
-    
+
     if stratified:
         value_counts = data.label.value_counts().items()
         for label, count in value_counts:
             subtest = test[test.label == label]
-            subtest_size = int(test_size*(count/total_size))
-            subtest_files = subtest.sample(subtest_size, random_state=SEED).filename.values
-            data.loc[data['filename'].isin(subtest_files), 'dataset'] = 'test'
-            
-    data.dataset = data.dataset.fillna('train')
-            
+            subtest_size = int(test_size * (count / total_size))
+            subtest_files = subtest.sample(
+                subtest_size, random_state=SEED
+            ).filename.values
+            data.loc[data["filename"].isin(subtest_files), "dataset"] = "test"
+
+    data.dataset = data.dataset.fillna("train")
+
     if verbose:
         counts = data.label.value_counts()
         perc = data.label.value_counts(normalize=True)
-        value_counts = pd.concat([counts, perc], axis=1, keys=['counts', 'percentage'])
+        value_counts = pd.concat([counts, perc], axis=1, keys=["counts", "percentage"])
         print(value_counts)
-        
-        subcounts = pd.DataFrame(data.groupby(["dataset", "label"]).size().reset_index())
-        subcounts.columns = ['dataset', 'label', 'count']
-        subcounts['percentage'] = subcounts[subcounts.dataset == 'test']['count']/test_size
-        subcounts = subcounts.set_index(['dataset', 'label'])
+
+        subcounts = pd.DataFrame(
+            data.groupby(["dataset", "label"]).size().reset_index()
+        )
+        subcounts.columns = ["dataset", "label", "count"]
+        subcounts["percentage"] = (
+            subcounts[subcounts.dataset == "test"]["count"] / test_size
+        )
+        subcounts = subcounts.set_index(["dataset", "label"])
         print(subcounts)
-    
+
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
-        
-    out_file = os.path.join(out_dir, f'{column}.csv')
+
+    out_file = os.path.join(out_dir, f"{column}.csv")
     data.to_csv(out_file, index=False)
-    
+
     return data
