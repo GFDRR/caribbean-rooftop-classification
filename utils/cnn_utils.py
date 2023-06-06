@@ -50,11 +50,8 @@ class CaribbeanDataset(Dataset):
 
 class SquarePad:
     # Source: https://www.grepper.com/answers/353879/pytorch+pad+to+square
-    def __init__(self, size=None):
-        self.size = size
-
     def __call__(self, image):
-        max_wh = max(max(image.size), self.size)
+        max_wh = max(image.size)
         p_left, p_top = [(max_wh - s) // 2 for s in image.size]
         p_right, p_bottom = [
             max_wh - (s + pad) for s, pad in zip(image.size, [p_left, p_top])
@@ -118,6 +115,7 @@ def train(data_loader, model, criterion, optimizer, scheduler, device, wandb=Non
     model.train()
 
     y_actuals, y_preds = [], []
+    running_loss = 0.0
     for inputs, labels in tqdm(data_loader, total=len(data_loader)):
         inputs = inputs.to(device)
         labels = labels.to(device)
@@ -132,15 +130,18 @@ def train(data_loader, model, criterion, optimizer, scheduler, device, wandb=Non
             loss.backward()
             optimizer.step()
 
+            running_loss += loss.item() * inputs.size(0)
             y_actuals.extend(labels.cpu().numpy().tolist())
             y_preds.extend(preds.data.cpu().numpy().tolist())
 
+    epoch_loss = running_loss / len(data_loader)
     epoch_results = eval_utils.evaluate(y_actuals, y_preds)
     learning_rate = optimizer.param_groups[0]["lr"]
     scheduler.step(epoch_results["f1_score"])
-    print(epoch_results, learning_rate)
+    print(f"Loss: {epoch_loss} {epoch_results} LR: {learning_rate}")
 
     if wandb is not None:
+        wandb.log({"train_loss": epoch_loss})
         wandb.log({"train_" + k: v for k, v in epoch_results.items()})
     return epoch_results
 
@@ -149,6 +150,7 @@ def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
     model.eval()
 
     y_actuals, y_preds = [], []
+    running_loss = 0.0
     confusion_matrix = torch.zeros(len(class_names), len(class_names))
 
     for inputs, labels in tqdm(data_loader, total=len(data_loader)):
@@ -163,13 +165,15 @@ def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
         y_actuals.extend(labels.cpu().numpy().tolist())
         y_preds.extend(preds.data.cpu().numpy().tolist())
 
+    epoch_loss = running_loss / len(data_loader)
     epoch_results = eval_utils.evaluate(y_actuals, y_preds)
     confusion_matrix, cm_metrics, cm_report = eval_utils.get_confusion_matrix(
         y_actuals, y_preds, class_names
     )
-    print(epoch_results)
+    print(f"Loss: {epoch_loss} {epoch_results}")
 
     if wandb is not None:
+        wandb.log({"val_loss": epoch_loss})
         wandb.log({"val_" + k: v for k, v in epoch_results.items()})
     return epoch_results, (confusion_matrix, cm_metrics, cm_report)
 
@@ -180,7 +184,7 @@ def get_transforms(size, sq_size=100):
     return {
         "train": transforms.Compose(
             [
-                SquarePad(sq_size),
+                SquarePad(),
                 transforms.Resize(size),
                 transforms.RandomRotation((-90, 90)),
                 transforms.RandomHorizontalFlip(),
@@ -191,7 +195,7 @@ def get_transforms(size, sq_size=100):
         ),
         "test": transforms.Compose(
             [
-                SquarePad(sq_size),
+                SquarePad(),
                 transforms.Resize(size),
                 transforms.CenterCrop(size),
                 transforms.ToTensor(),
@@ -207,6 +211,7 @@ def load_model(
     pretrained,
     scheduler_type,
     optimizer_type,
+    n_channels=3,
     lr=0.001,
     momentum=0.9,
     gamma=0.1,
@@ -222,6 +227,12 @@ def load_model(
             model = models.resnet34(weights=ResNet34_Weights.DEFAULT)
         elif model_type == "resnet50":
             model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
+            
+        if n_channels == 1:
+            weights = model.conv1.weight
+            model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            model.conv1.weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
+            
         num_ftrs = model.fc.in_features
 
         if dropout > 0:
