@@ -234,19 +234,24 @@ def load_model(
             model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
             
         if n_channels == 1:
+            #source: https://datascience.stackexchange.com/a/65784
             weights = model.conv1.weight
             model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
             model.conv1.weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
             
         num_ftrs = model.fc.in_features
-
         if dropout > 0:
             model.fc = nn.Sequential(
                 nn.Dropout(dropout), nn.Linear(num_ftrs, n_classes)
             )
         else:
             model.fc = nn.Linear(num_ftrs, n_classes)
-
+            
+    if 'inception' in model_type:
+        model = models.inception_v3(pretrained=True)
+        num_ftrs = model.fc.in_features
+        model.fc = nn.Linear(num_ftrs, n_classes)
+        
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
 
