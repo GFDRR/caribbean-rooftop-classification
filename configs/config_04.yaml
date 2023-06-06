@@ -1,0 +1,19 @@
+data_dir: './data/rasters/Tiles/ortho/'
+csv_dir: './data/csv/'
+attribute: 'roof_type'
+exp_name: 'exp-04'
+batch_size: 32
+n_workers: 4
+n_epochs: 30
+
+model: "inceptionv3"
+pretrained: True
+scheduler: "ReduceLROnPlateau"
+optimizer: "Adam"
+lr: 0.001
+img_size: 299
+momentum: 
+gamma: 
+step_size: 
+patience: 7
+dropout:
