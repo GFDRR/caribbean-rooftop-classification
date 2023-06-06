@@ -11,8 +11,9 @@ pretrained: True
 scheduler: "ReduceLROnPlateau"
 optimizer: "Adam"
 lr: 0.001
-momentum: None
-gamma: None
-step_size: None
+img_size: 224
+momentum: 
+gamma: 
+step_size: 
 patience: 7
 dropout: 0.2
