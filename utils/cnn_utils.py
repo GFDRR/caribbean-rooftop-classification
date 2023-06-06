@@ -80,10 +80,10 @@ def visualize_data(data, data_loader, phase="test", n=4):
             axes[i, j].axis("off")
 
 
-def load_dataset(config, phases, size=224):
+def load_dataset(config, phases):
     csv_file = os.path.join(config["csv_dir"], f"{config['attribute']}.csv")
     dataset = pd.read_csv(csv_file)
-    transforms = get_transforms(size=size)
+    transforms = get_transforms(size=config["img_size"])
     classes = list(dataset.label.unique())
     classes = {class_: index for index, class_ in enumerate(classes)}
     print(classes)
@@ -249,6 +249,7 @@ def load_model(
             
     if 'inception' in model_type:
         model = models.inception_v3(pretrained=True)
+        model.aux_logits = False
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, n_classes)
         
