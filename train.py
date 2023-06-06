@@ -22,6 +22,14 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 json.fallback_table[np.ndarray] = lambda array: array.tolist()
 
 
+def save_results(results, cm, exp_dir):
+    with open(os.path.join(exp_dir, "results.json"), "w") as f:
+        json.dump(results, f)
+    cm[0].to_csv(os.path.join(exp_dir, "confusion_matrix.csv"))
+    cm[1].to_csv(os.path.join(exp_dir, "cm_metrics.csv"))
+    file = open(os.path.join(exp_dir, "cm_report.log"), "a").write(cm[2])
+
+
 def main(c):
     exp_name = c["exp_name"]
     exp_dir = f"./exp/{exp_name}/"
@@ -31,6 +39,7 @@ def main(c):
     wandb.init(project="GFDRR")
     wandb.run.name = exp_name
     wandb.config = c
+    print(c)
 
     # Load dataset
     phases = ["train", "test"]
@@ -75,24 +84,32 @@ def main(c):
             model,
             criterion,
             optimizer,
-            scheduler,
             device,
             wandb=wandb,
         )
-        val_results, _ = cnn_utils.evaluate(
-            data_loader["test"], classes, model, criterion, device, wandb=wandb
+        val_results, val_cm = cnn_utils.evaluate(
+            data_loader["test"], 
+            classes,
+            model, 
+            criterion, 
+            device, 
+            wandb=wandb
         )
+        scheduler.step(val_results['loss'])
 
         # Save best model so far
         if val_results["f1_score"] > best_score:
             best_score = val_results["f1_score"]
             best_weights = model.state_dict()
             model.load_state_dict(best_weights)
-            torch.save(model.state_dict(), exp_dir + "best_model.pth")
+            
+            save_results(val_results, val_cm, exp_dir)
+            model_file = os.path.join(exp_dir, "best_model.pth")
+            torch.save(model.state_dict(), model_file)
 
         # Terminate if learning rate becomes too low
         learning_rate = optimizer.param_groups[0]["lr"]
-        if learning_rate < 1e-7:
+        if learning_rate < 1e-10:
             break
 
     # Terminate trackers
@@ -108,20 +125,16 @@ def main(c):
 
     # Calculate test performance using best model
     print("\nTest Results")
-    test_results, cm_results = cnn_utils.evaluate(
+    test_results, test_cm = cnn_utils.evaluate(
         data_loader["test"], classes, model, criterion, device, wandb=wandb
     )
-    confusion_matrix, cm_metrics, cm_report = cm_results
 
     # Save results in experiment directory
-    with open(exp_dir + "results.json", "w") as f:
-        json.dump(test_results, f)
-    confusion_matrix.to_csv(exp_dir + "confusion_matrix.csv")
-    cm_metrics.to_csv(exp_dir + "cm_metrics.csv")
-    file = open(exp_dir + "cm_report.log", "a").write(cm_report)
+    save_results(test_results, test_cm, exp_dir)
 
-    # Save best model
-    torch.save(model.state_dict(), exp_dir + "best_model.pth")
+    # Save best mode
+    model_file = os.path.join(exp_dir, "best_model.pth")
+    torch.save(model.state_dict(), model_file)
 
 
 if __name__ == "__main__":
