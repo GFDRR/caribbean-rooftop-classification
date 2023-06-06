@@ -29,8 +29,7 @@ class CaribbeanDataset(Dataset):
         self.image_folder = image_folder
         self.attribute = attribute
         self.transform = transform
-        self.class_encoding = {class_: index for index, class_ in enumerate(classes)}
-        print(self.class_encoding)
+        self.classes = classes 
 
     def __getitem__(self, index):
         item = self.dataset.iloc[index]
@@ -41,7 +40,7 @@ class CaribbeanDataset(Dataset):
         image = Image.open(filename).convert("RGB")
         if self.transform:
             x = self.transform(image)
-        y = self.class_encoding[item["label"]]
+        y = self.classes[item["label"]]
         return x, y
 
     def __len__(self):
@@ -86,10 +85,14 @@ def load_dataset(config, phases, size=224):
     dataset = pd.read_csv(csv_file)
     transforms = get_transforms(size=size)
     classes = list(dataset.label.unique())
+    classes = {class_: index for index, class_ in enumerate(classes)}
+    print(classes)
 
     data = {
         phase: CaribbeanDataset(
-            dataset[dataset.dataset == phase].reset_index(drop=True),
+            dataset[dataset.dataset == phase].sample(
+                frac=1, random_state=SEED
+            ).reset_index(drop=True),
             config["data_dir"],
             config["attribute"],
             classes,
@@ -111,7 +114,7 @@ def load_dataset(config, phases, size=224):
     return data, data_loader, classes
 
 
-def train(data_loader, model, criterion, optimizer, scheduler, device, wandb=None):
+def train(data_loader, model, criterion, optimizer, device, wandb=None):
     model.train()
 
     y_actuals, y_preds = [], []
@@ -136,12 +139,12 @@ def train(data_loader, model, criterion, optimizer, scheduler, device, wandb=Non
 
     epoch_loss = running_loss / len(data_loader)
     epoch_results = eval_utils.evaluate(y_actuals, y_preds)
+    epoch_results['loss'] = epoch_loss
+    
     learning_rate = optimizer.param_groups[0]["lr"]
-    scheduler.step(epoch_results["f1_score"])
     print(f"Loss: {epoch_loss} {epoch_results} LR: {learning_rate}")
 
     if wandb is not None:
-        wandb.log({"train_loss": epoch_loss})
         wandb.log({"train_" + k: v for k, v in epoch_results.items()})
     return epoch_results
 
@@ -162,18 +165,20 @@ def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
             probs, preds = torch.max(outputs, 1)
             loss = criterion(outputs, labels)
 
+        running_loss += loss.item() * inputs.size(0)
         y_actuals.extend(labels.cpu().numpy().tolist())
         y_preds.extend(preds.data.cpu().numpy().tolist())
 
     epoch_loss = running_loss / len(data_loader)
     epoch_results = eval_utils.evaluate(y_actuals, y_preds)
+    epoch_results['loss'] = epoch_loss
+    
     confusion_matrix, cm_metrics, cm_report = eval_utils.get_confusion_matrix(
         y_actuals, y_preds, class_names
     )
     print(f"Loss: {epoch_loss} {epoch_results}")
 
     if wandb is not None:
-        wandb.log({"val_loss": epoch_loss})
         wandb.log({"val_" + k: v for k, v in epoch_results.items()})
     return epoch_results, (confusion_matrix, cm_metrics, cm_report)
 
