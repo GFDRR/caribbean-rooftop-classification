@@ -64,8 +64,8 @@ def visualize_data(data, data_loader, phase="test", n=4):
     inputs, classes = next(iter(data_loader[phase]))
     fig, axes = plt.subplots(n, n, figsize=(6, 6))
 
-    key_list = list(data[phase].class_encoding.keys())
-    val_list = list(data[phase].class_encoding.values())
+    key_list = list(data[phase].classes.keys())
+    val_list = list(data[phase].classes.values())
 
     for i in range(n):
         for j in range(n):
