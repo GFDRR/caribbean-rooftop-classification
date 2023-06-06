@@ -4,13 +4,13 @@ attribute: 'roof_type'
 exp_name: 'exp-02'
 batch_size: 32
 n_workers: 4
-n_epochs: 50
+n_epochs: 30
 
 model: "resnet50"
 pretrained: True
 scheduler: "ReduceLROnPlateau"
 optimizer: "Adam"
-lr: 0.00001
+lr: 0.001
 momentum: None
 gamma: None
 step_size: None
