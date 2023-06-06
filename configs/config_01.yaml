@@ -2,17 +2,17 @@ data_dir: './data/rasters/Tiles/ortho/'
 csv_dir: './data/csv/'
 attribute: 'roof_material'
 exp_name: 'exp-01'
-batch_size: 16
+batch_size: 32
 n_workers: 4
-n_epochs: 60
+n_epochs: 50
 
 model: "resnet50"
 pretrained: True
 scheduler: "ReduceLROnPlateau"
 optimizer: "Adam"
-lr: 0.0001
+lr: 0.00001
 momentum: None
 gamma: None
 step_size: None
-patience: 10
-dropout: 0.50
+patience: 7
+dropout: 0.2
