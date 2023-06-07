@@ -1,6 +1,7 @@
 import os
 import sys
 from tqdm import tqdm
+import rasterio as rio
 import pandas as pd
 import numpy as np
 from PIL import Image
@@ -16,6 +17,7 @@ import torchvision
 from torchvision import datasets, models, transforms
 import torchvision.transforms.functional as F
 from torchvision.models import ResNet18_Weights, ResNet34_Weights, ResNet50_Weights
+from sklearn.preprocessing import minmax_scale
 
 sys.path.insert(0, "./utils/")
 import eval_utils
@@ -23,13 +25,22 @@ import eval_utils
 SEED = 42
 
 
+def get_imagenet_mean_std(mode):
+    if mode == 'RGB':
+         return [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+    elif mode == 'GRAYSCALE':
+        # Source: https://stackoverflow.com/a/65717887
+        return [0.44531356896770125, ], [0.2692461874154524]
+
+
 class CaribbeanDataset(Dataset):
-    def __init__(self, dataset, image_folder, attribute, classes, transform=None):
+    def __init__(self, dataset, image_folder, attribute, classes, mode='RGB', transform=None):
         self.dataset = dataset
         self.image_folder = image_folder
         self.attribute = attribute
         self.transform = transform
         self.classes = classes 
+        self.mode = mode
 
     def __getitem__(self, index):
         item = self.dataset.iloc[index]
@@ -37,7 +48,17 @@ class CaribbeanDataset(Dataset):
         filename = os.path.join(
             self.image_folder, self.attribute, item["label"], filename
         )
-        image = Image.open(filename).convert("RGB")
+        if self.mode == 'RGB':
+            image = Image.open(filename).convert("RGB")
+        
+        elif self.mode == 'GRAYSCALE':
+            src = rio.open(filename)
+            image = src.read([1]).squeeze()
+            image[image < 0] = 0
+            image = minmax_scale(image) * 255
+            image = image.astype('uint8')
+            image = Image.fromarray(image)
+            src.close()
         if self.transform:
             x = self.transform(image)
         y = self.classes[item["label"]]
@@ -59,8 +80,8 @@ class SquarePad:
         return F.pad(image, padding, 0, "constant")
 
 
-def visualize_data(data, data_loader, phase="test", n=4):
-    imagenet_mean, imagenet_std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+def visualize_data(data, data_loader, phase="test", mode='RGB', n=4):
+    imagenet_mean, imagenet_std = get_imagenet_mean_std(mode)
     inputs, classes = next(iter(data_loader[phase]))
     fig, axes = plt.subplots(n, n, figsize=(6, 6))
 
@@ -70,12 +91,13 @@ def visualize_data(data, data_loader, phase="test", n=4):
     for i in range(n):
         for j in range(n):
             image = inputs[i * n + j].numpy().transpose((1, 2, 0))
-            image = np.clip(
-                np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1
-            )
+            image = np.clip(np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1)
 
             title = key_list[val_list.index(classes[i * n + j])]
-            axes[i, j].imshow(image)
+            if mode == 'RGB': 
+                axes[i, j].imshow(image)
+            elif mode == 'GRAYSCALE': 
+                axes[i, j].imshow(image, cmap='viridis')
             axes[i, j].set_title(title, fontdict={"fontsize": 7})
             axes[i, j].axis("off")
 
@@ -83,7 +105,7 @@ def visualize_data(data, data_loader, phase="test", n=4):
 def load_dataset(config, phases):
     csv_file = os.path.join(config["csv_dir"], f"{config['attribute']}.csv")
     dataset = pd.read_csv(csv_file)
-    transforms = get_transforms(size=config["img_size"])
+    transforms = get_transforms(size=config["img_size"], mode=config["mode"])
     classes = list(dataset.label.unique())
     classes = {class_: index for index, class_ in enumerate(classes)}
     print(classes)
@@ -96,6 +118,7 @@ def load_dataset(config, phases):
             config["data_dir"],
             config["attribute"],
             classes,
+            config["mode"],
             transforms[phase],
         )
         for phase in phases
@@ -183,8 +206,8 @@ def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
     return epoch_results, (confusion_matrix, cm_metrics, cm_report)
 
 
-def get_transforms(size, sq_size=100):
-    imagenet_mean, imagenet_std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+def get_transforms(size, mode='RGB'):
+    imagenet_mean, imagenet_std = get_imagenet_mean_std(mode)
 
     return {
         "train": transforms.Compose(
