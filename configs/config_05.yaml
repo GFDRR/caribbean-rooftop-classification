@@ -2,7 +2,7 @@ data_dir: './data/rasters/Tiles/ndsm/'
 csv_dir: './data/csv/'
 attribute: 'roof_type'
 mode: 'GRAYSCALE'
-exp_name: 'exp-01'
+exp_name: 'exp-05'
 batch_size: 32
 n_workers: 4
 n_epochs: 30
