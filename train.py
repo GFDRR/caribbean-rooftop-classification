@@ -63,6 +63,7 @@ def main(c):
         step_size=c["step_size"],
         patience=c["patience"],
         dropout=c["dropout"],
+        mode=c['mode'],
         device=device,
     )
     print(model)

@@ -55,7 +55,6 @@ class CaribbeanDataset(Dataset):
             src = rio.open(filename)
             image = src.read([1]).squeeze()
             image[image < 0] = 0
-            #image = minmax_scale(image) 
             image = Image.fromarray(image, mode='F')
             src.close()
             
@@ -239,7 +238,7 @@ def load_model(
     pretrained,
     scheduler_type,
     optimizer_type,
-    n_channels=3,
+    mode='RGB',
     lr=0.001,
     momentum=0.9,
     gamma=0.1,
@@ -256,7 +255,7 @@ def load_model(
         elif model_type == "resnet50":
             model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
             
-        if n_channels == 1:
+        if mode == 'GRAYSCALE':
             #source: https://datascience.stackexchange.com/a/65784
             weights = model.conv1.weight
             model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
