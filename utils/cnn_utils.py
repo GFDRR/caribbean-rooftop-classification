@@ -55,12 +55,13 @@ class CaribbeanDataset(Dataset):
             src = rio.open(filename)
             image = src.read([1]).squeeze()
             image[image < 0] = 0
-            image = minmax_scale(image) * 255
-            image = image.astype('uint8')
-            image = Image.fromarray(image)
+            #image = minmax_scale(image) 
+            image = Image.fromarray(image, mode='F')
             src.close()
+            
         if self.transform:
             x = self.transform(image)
+            
         y = self.classes[item["label"]]
         return x, y
 
@@ -91,13 +92,12 @@ def visualize_data(data, data_loader, phase="test", mode='RGB', n=4):
     for i in range(n):
         for j in range(n):
             image = inputs[i * n + j].numpy().transpose((1, 2, 0))
-            image = np.clip(np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1)
-
             title = key_list[val_list.index(classes[i * n + j])]
             if mode == 'RGB': 
+                image = np.clip(np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1)
                 axes[i, j].imshow(image)
             elif mode == 'GRAYSCALE': 
-                axes[i, j].imshow(image, cmap='viridis')
+                axes[i, j].imshow(image, cmap='viridis', norm='linear')
             axes[i, j].set_title(title, fontdict={"fontsize": 7})
             axes[i, j].axis("off")
 
