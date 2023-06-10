@@ -1,6 +1,7 @@
 import os
 import sys
 from tqdm import tqdm
+import rasterio as rio
 import pandas as pd
 import numpy as np
 from PIL import Image
@@ -16,6 +17,7 @@ import torchvision
 from torchvision import datasets, models, transforms
 import torchvision.transforms.functional as F
 from torchvision.models import ResNet18_Weights, ResNet34_Weights, ResNet50_Weights
+from sklearn.preprocessing import minmax_scale
 
 sys.path.insert(0, "./utils/")
 import eval_utils
@@ -23,14 +25,22 @@ import eval_utils
 SEED = 42
 
 
+def get_imagenet_mean_std(mode):
+    if mode == 'RGB':
+         return [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+    elif mode == 'GRAYSCALE':
+        # Source: https://stackoverflow.com/a/65717887
+        return [0.44531356896770125, ], [0.2692461874154524]
+
+
 class CaribbeanDataset(Dataset):
-    def __init__(self, dataset, image_folder, attribute, classes, transform=None):
+    def __init__(self, dataset, image_folder, attribute, classes, mode='RGB', transform=None):
         self.dataset = dataset
         self.image_folder = image_folder
         self.attribute = attribute
         self.transform = transform
-        self.class_encoding = {class_: index for index, class_ in enumerate(classes)}
-        print(self.class_encoding)
+        self.classes = classes 
+        self.mode = mode
 
     def __getitem__(self, index):
         item = self.dataset.iloc[index]
@@ -38,10 +48,20 @@ class CaribbeanDataset(Dataset):
         filename = os.path.join(
             self.image_folder, self.attribute, item["label"], filename
         )
-        image = Image.open(filename).convert("RGB")
+        if self.mode == 'RGB':
+            image = Image.open(filename).convert("RGB")
+        
+        elif self.mode == 'GRAYSCALE':
+            src = rio.open(filename)
+            image = src.read([1]).squeeze()
+            image[image < 0] = 0
+            image = Image.fromarray(image, mode='F')
+            src.close()
+            
         if self.transform:
             x = self.transform(image)
-        y = self.class_encoding[item["label"]]
+            
+        y = self.classes[item["label"]]
         return x, y
 
     def __len__(self):
@@ -60,39 +80,44 @@ class SquarePad:
         return F.pad(image, padding, 0, "constant")
 
 
-def visualize_data(data, data_loader, phase="test", n=4):
-    imagenet_mean, imagenet_std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+def visualize_data(data, data_loader, phase="test", mode='RGB', n=4):
+    imagenet_mean, imagenet_std = get_imagenet_mean_std(mode)
     inputs, classes = next(iter(data_loader[phase]))
     fig, axes = plt.subplots(n, n, figsize=(6, 6))
 
-    key_list = list(data[phase].class_encoding.keys())
-    val_list = list(data[phase].class_encoding.values())
+    key_list = list(data[phase].classes.keys())
+    val_list = list(data[phase].classes.values())
 
     for i in range(n):
         for j in range(n):
             image = inputs[i * n + j].numpy().transpose((1, 2, 0))
-            image = np.clip(
-                np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1
-            )
-
             title = key_list[val_list.index(classes[i * n + j])]
-            axes[i, j].imshow(image)
+            if mode == 'RGB': 
+                image = np.clip(np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1)
+                axes[i, j].imshow(image)
+            elif mode == 'GRAYSCALE': 
+                axes[i, j].imshow(image, cmap='viridis', norm='linear')
             axes[i, j].set_title(title, fontdict={"fontsize": 7})
             axes[i, j].axis("off")
 
 
-def load_dataset(config, phases, size=224):
+def load_dataset(config, phases):
     csv_file = os.path.join(config["csv_dir"], f"{config['attribute']}.csv")
     dataset = pd.read_csv(csv_file)
-    transforms = get_transforms(size=size)
+    transforms = get_transforms(size=config["img_size"], mode=config["mode"])
     classes = list(dataset.label.unique())
+    classes = {class_: index for index, class_ in enumerate(classes)}
+    print(classes)
 
     data = {
         phase: CaribbeanDataset(
-            dataset[dataset.dataset == phase].reset_index(drop=True),
+            dataset[dataset.dataset == phase].sample(
+                frac=1, random_state=SEED
+            ).reset_index(drop=True),
             config["data_dir"],
             config["attribute"],
             classes,
+            config["mode"],
             transforms[phase],
         )
         for phase in phases
@@ -111,7 +136,7 @@ def load_dataset(config, phases, size=224):
     return data, data_loader, classes
 
 
-def train(data_loader, model, criterion, optimizer, scheduler, device, wandb=None):
+def train(data_loader, model, criterion, optimizer, device, wandb=None):
     model.train()
 
     y_actuals, y_preds = [], []
@@ -136,12 +161,12 @@ def train(data_loader, model, criterion, optimizer, scheduler, device, wandb=Non
 
     epoch_loss = running_loss / len(data_loader)
     epoch_results = eval_utils.evaluate(y_actuals, y_preds)
+    epoch_results['loss'] = epoch_loss
+    
     learning_rate = optimizer.param_groups[0]["lr"]
-    scheduler.step(epoch_results["f1_score"])
     print(f"Loss: {epoch_loss} {epoch_results} LR: {learning_rate}")
 
     if wandb is not None:
-        wandb.log({"train_loss": epoch_loss})
         wandb.log({"train_" + k: v for k, v in epoch_results.items()})
     return epoch_results
 
@@ -162,24 +187,26 @@ def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
             probs, preds = torch.max(outputs, 1)
             loss = criterion(outputs, labels)
 
+        running_loss += loss.item() * inputs.size(0)
         y_actuals.extend(labels.cpu().numpy().tolist())
         y_preds.extend(preds.data.cpu().numpy().tolist())
 
     epoch_loss = running_loss / len(data_loader)
     epoch_results = eval_utils.evaluate(y_actuals, y_preds)
+    epoch_results['loss'] = epoch_loss
+    
     confusion_matrix, cm_metrics, cm_report = eval_utils.get_confusion_matrix(
         y_actuals, y_preds, class_names
     )
     print(f"Loss: {epoch_loss} {epoch_results}")
 
     if wandb is not None:
-        wandb.log({"val_loss": epoch_loss})
         wandb.log({"val_" + k: v for k, v in epoch_results.items()})
     return epoch_results, (confusion_matrix, cm_metrics, cm_report)
 
 
-def get_transforms(size, sq_size=100):
-    imagenet_mean, imagenet_std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+def get_transforms(size, mode='RGB'):
+    imagenet_mean, imagenet_std = get_imagenet_mean_std(mode)
 
     return {
         "train": transforms.Compose(
@@ -211,7 +238,7 @@ def load_model(
     pretrained,
     scheduler_type,
     optimizer_type,
-    n_channels=3,
+    mode='RGB',
     lr=0.001,
     momentum=0.9,
     gamma=0.1,
@@ -228,20 +255,26 @@ def load_model(
         elif model_type == "resnet50":
             model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
             
-        if n_channels == 1:
+        if mode == 'GRAYSCALE':
+            #source: https://datascience.stackexchange.com/a/65784
             weights = model.conv1.weight
             model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
             model.conv1.weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
             
         num_ftrs = model.fc.in_features
-
         if dropout > 0:
             model.fc = nn.Sequential(
                 nn.Dropout(dropout), nn.Linear(num_ftrs, n_classes)
             )
         else:
             model.fc = nn.Linear(num_ftrs, n_classes)
-
+            
+    if 'inception' in model_type:
+        model = models.inception_v3(pretrained=True)
+        model.aux_logits = False
+        num_ftrs = model.fc.in_features
+        model.fc = nn.Linear(num_ftrs, n_classes)
+        
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
 
