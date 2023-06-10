@@ -33,6 +33,12 @@ def load_model(model_type, exp_dir, n_classes=2, dropout=0.5, mode='RGB'):
         elif model_type == "resnet50":
             model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
         num_ftrs = model.fc.in_features
+        
+        if mode == 'GRAYSCALE':
+            #source: https://datascience.stackexchange.com/a/65784
+            weights = model.conv1.weight
+            model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            model.conv1.weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
 
         if dropout > 0:
             model.fc = nn.Sequential(
@@ -62,7 +68,7 @@ def load_model(model_type, exp_dir, n_classes=2, dropout=0.5, mode='RGB'):
     return model
 
 
-def generate_predictions(data, model, in_file, out_dir, class_name, classes, scale=1.5):
+def generate_predictions(data, model, c, in_file, out_dir, class_name, classes, scale=1.5):
     preds = []
     pbar = tqdm(enumerate(data.iterrows()), total=len(data))
     for index, (_, row) in pbar:
@@ -81,8 +87,16 @@ def generate_predictions(data, model, in_file, out_dir, class_name, classes, sca
         )
 
         if os.path.exists(out_file):
-            image = Image.open(out_file).convert("RGB")
-            transforms = cnn_utils.get_transforms(224)
+            if c['mode'] == 'RGB':
+                image = Image.open(out_file).convert("RGB")
+            if c['mode'] == 'GRAYSCALE':
+                src = rio.open(out_file)
+                image = src.read([1]).squeeze()
+                image[image < 0] = 0
+                image = Image.fromarray(image, mode='F')
+                src.close()
+                
+            transforms = cnn_utils.get_transforms(c['img_size'], c['mode'])
             input = transforms["test"](image)
             output = model(input.unsqueeze(0))
             _, pred = torch.max(output, 1)
