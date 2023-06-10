@@ -16,7 +16,7 @@ from torch.utils.data import Dataset, Subset
 import torchvision
 from torchvision import datasets, models, transforms
 import torchvision.transforms.functional as F
-from torchvision.models import ResNet18_Weights, ResNet34_Weights, ResNet50_Weights
+from torchvision.models import ResNet18_Weights, ResNet34_Weights, ResNet50_Weights, Inception_V3_Weights
 from sklearn.preprocessing import minmax_scale
 
 sys.path.insert(0, "./utils/")
@@ -355,9 +355,10 @@ def generate_train_test(
     data.dataset = data.dataset.fillna("train")
 
     if verbose:
-        counts = data.label.value_counts()
-        perc = data.label.value_counts(normalize=True)
-        value_counts = pd.concat([counts, perc], axis=1, keys=["counts", "percentage"])
+        value_counts = pd.concat([
+            data.label.value_counts(), 
+            data.label.value_counts(normalize=True)
+        ], axis=1, keys=["counts", "percentage"])
         print(value_counts)
 
         subcounts = pd.DataFrame(
