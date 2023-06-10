@@ -16,7 +16,13 @@ from torch.utils.data import Dataset, Subset
 import torchvision
 from torchvision import datasets, models, transforms
 import torchvision.transforms.functional as F
-from torchvision.models import ResNet18_Weights, ResNet34_Weights, ResNet50_Weights, Inception_V3_Weights
+from torchvision.models import (
+    ResNet18_Weights, 
+    ResNet34_Weights, 
+    ResNet50_Weights, 
+    Inception_V3_Weights, 
+    VGG16_Weights
+)
 from sklearn.preprocessing import minmax_scale
 
 sys.path.insert(0, "./utils/")
@@ -274,6 +280,16 @@ def get_model(model_type, n_classes, mode, dropout=0):
         model.aux_logits = False
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, n_classes)
+        
+    if 'vgg' in model_type:
+        model = models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
+        if mode == 'GRAYSCALE':
+            weights = model.features[0].weight.clone()
+            model.features[0] = nn.Conv2d(1, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+            model.features[0].weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
+        
+        num_ftrs = model.classifier[6].in_features
+        model.classifier[6] = nn.Linear(num_ftrs, n_classes)
         
     return model
 
