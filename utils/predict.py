@@ -21,7 +21,7 @@ sys.path.insert(0, "./utils/")
 import cnn_utils
 
 
-def load_model(model_type, exp_dir, n_classes=2, dropout=0.5):
+def load_model(model_type, exp_dir, n_classes=2, dropout=0.5, mode='RGB'):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model_file = os.path.join(exp_dir, "best_model.pth")
 
@@ -40,6 +40,19 @@ def load_model(model_type, exp_dir, n_classes=2, dropout=0.5):
             )
         else:
             model.fc = nn.Linear(num_ftrs, n_classes)
+    
+    if 'inception' in model_type:
+        if mode == 'RGB':
+            model = models.inception_v3(pretrained=True)
+        elif mode == 'GRAYSCALE':
+            model = models.inception_v3(pretrained=True, transform_input=False)
+            weights = model.Conv2d_1a_3x3.conv.weight.clone()
+            model.Conv2d_1a_3x3.conv = nn.Conv2d(1, 32, kernel_size=3, stride=2, bias=False)
+            model.Conv2d_1a_3x3.conv.weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
+        
+        model.aux_logits = False
+        num_ftrs = model.fc.in_features
+        model.fc = nn.Linear(num_ftrs, n_classes)
 
     model.load_state_dict(torch.load(model_file, map_location=device))
     model = model.to(device)
