@@ -22,10 +22,10 @@ import cnn_utils
 import geoutils
 
 
-def load_model(c, exp_dir, n_classes, mode='RGB'):
+def load_model(c, exp_dir, n_classes):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model_file = os.path.join(exp_dir, "best_model.pth")
-    model = cnn_utils.get_model(c['model'], n_classes, mode, c['dropout'])
+    model = cnn_utils.get_model(c['model'], n_classes, c['mode'], c['dropout'])
     model.load_state_dict(torch.load(model_file, map_location=device))
     model = model.to(device)
     model.eval()
@@ -51,8 +51,7 @@ def generate_predictions(data, model, c, in_file, out_dir, classes, scale=1.5):
         if os.path.exists(out_file):
             image = cnn_utils.read_image(out_file, c['mode'])
             transforms = cnn_utils.get_transforms(c['img_size'], c['mode'])
-            input = transforms["test"](image)
-            output = model(input.unsqueeze(0))
+            output = model(transforms["test"](image).unsqueeze(0))
             _, pred = torch.max(output, 1)
             label = str(classes[int(pred[0])])
             preds.append(label)
