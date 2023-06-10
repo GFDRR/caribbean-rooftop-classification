@@ -31,6 +31,18 @@ def get_imagenet_mean_std(mode):
     elif mode == 'GRAYSCALE':
         # Source: https://stackoverflow.com/a/65717887
         return [0.44531356896770125, ], [0.2692461874154524]
+    
+    
+def read_image(filename, mode):
+    if mode == 'RGB':
+        image = Image.open(filename).convert("RGB")
+    elif mode == 'GRAYSCALE':
+        src = rio.open(filename)
+        image = src.read([1]).squeeze()
+        image[image < 0] = 0
+        image = Image.fromarray(image, mode='F')
+        src.close()
+    return image
 
 
 class CaribbeanDataset(Dataset):
@@ -48,15 +60,7 @@ class CaribbeanDataset(Dataset):
         filename = os.path.join(
             self.image_folder, self.attribute, item["label"], filename
         )
-        if self.mode == 'RGB':
-            image = Image.open(filename).convert("RGB")
-        
-        elif self.mode == 'GRAYSCALE':
-            src = rio.open(filename)
-            image = src.read([1]).squeeze()
-            image[image < 0] = 0
-            image = Image.fromarray(image, mode='F')
-            src.close()
+        image = read_image(filename, self.mode)
             
         if self.transform:
             x = self.transform(image)
@@ -232,21 +236,7 @@ def get_transforms(size, mode='RGB'):
     }
 
 
-def load_model(
-    model_type,
-    n_classes,
-    pretrained,
-    scheduler_type,
-    optimizer_type,
-    mode='RGB',
-    lr=0.001,
-    momentum=0.9,
-    gamma=0.1,
-    step_size=7,
-    patience=7,
-    dropout=0,
-    device="cpu",
-):
+def get_model(model_type, n_classes, mode, dropout=0):
     if "resnet" in model_type:
         if model_type == "resnet18":
             model = models.resnet18(weights=ResNet18_Weights.DEFAULT)
@@ -271,9 +261,12 @@ def load_model(
             
     if 'inception' in model_type:
         if mode == 'RGB':
-            model = models.inception_v3(pretrained=True)
+            model = models.inception_v3(weights=Inception_V3_Weights.IMAGENET1K_V1)
         elif mode == 'GRAYSCALE':
-            model = models.inception_v3(pretrained=True, transform_input=False)
+            model = models.inception_v3(
+                weights=Inception_V3_Weights.IMAGENET1K_V1, 
+                transform_input=False
+            )
             weights = model.Conv2d_1a_3x3.conv.weight.clone()
             model.Conv2d_1a_3x3.conv = nn.Conv2d(1, 32, kernel_size=3, stride=2, bias=False)
             model.Conv2d_1a_3x3.conv.weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
@@ -282,6 +275,25 @@ def load_model(
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, n_classes)
         
+    return model
+
+
+def load_model(
+    model_type,
+    n_classes,
+    pretrained,
+    scheduler_type,
+    optimizer_type,
+    mode='RGB',
+    lr=0.001,
+    momentum=0.9,
+    gamma=0.1,
+    step_size=7,
+    patience=7,
+    dropout=0,
+    device="cpu",
+):
+    model = get_model(model_type, n_classes, mode, dropout)
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
 
@@ -340,7 +352,6 @@ def generate_train_test(
                 subtest_size, random_state=SEED
             ).filename.values
             data.loc[data["filename"].isin(subtest_files), "dataset"] = "test"
-
     data.dataset = data.dataset.fillna("train")
 
     if verbose:
