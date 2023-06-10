@@ -270,7 +270,14 @@ def load_model(
             model.fc = nn.Linear(num_ftrs, n_classes)
             
     if 'inception' in model_type:
-        model = models.inception_v3(pretrained=True)
+        if mode == 'RGB':
+            model = models.inception_v3(pretrained=True)
+        elif mode == 'GRAYSCALE':
+            model = models.inception_v3(pretrained=True, transform_input=False)
+            weights = model.Conv2d_1a_3x3.conv.weight.clone()
+            model.Conv2d_1a_3x3.conv = nn.Conv2d(1, 32, kernel_size=3, stride=2, bias=False)
+            model.Conv2d_1a_3x3.conv.weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
+        
         model.aux_logits = False
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, n_classes)
