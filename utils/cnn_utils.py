@@ -21,7 +21,8 @@ from torchvision.models import (
     ResNet34_Weights, 
     ResNet50_Weights, 
     Inception_V3_Weights, 
-    VGG16_Weights
+    VGG16_Weights,
+    EfficientNet_B0_Weights
 )
 from sklearn.preprocessing import minmax_scale
 
@@ -290,6 +291,17 @@ def get_model(model_type, n_classes, mode, dropout=0):
         
         num_ftrs = model.classifier[6].in_features
         model.classifier[6] = nn.Linear(num_ftrs, n_classes)
+    
+    if 'efficientnet' in model_type:
+        model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
+        if mode == 'GRAYSCALE':
+            weights = model.features[0][0].weight.clone()
+            model.features[0][0] = nn.Conv2d(
+                1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False
+            )
+            model.features[0][0].weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
+        num_ftrs = model.classifier[1].in_features
+        model.classifier[1] = nn.Linear(num_ftrs, n_classes)
         
     return model
 
