@@ -8,6 +8,23 @@ from rasterio.plot import show
 from tqdm import tqdm
 
 
+classes_dict = {
+    'roof_material': [
+        'BLUE_TARP', 
+        'CONCRETE_CEMENT', 
+        'HEALTHY_METAL', 
+        'INCOMPLETE', 
+        'IRREGULAR_METAL'
+    ],
+    'roof_type': [
+        'FLAT', 
+        'GABLE', 
+        'HIP', 
+        'NO_ROOF'
+    ]
+}
+
+
 def remove_ticks(ax):
     ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
     ax.set_axis_off()
