@@ -43,7 +43,7 @@ def get_confusion_matrix(y_true, y_pred, class_names):
     y_true = pd.Series(y_true, name="Actual")
 
     labels = class_names
-    if list(y_true)[0].isdigit():
+    if isinstance(list(y_true)[0], int):
         labels = list(range(len(class_names)))
     cm = confusion_matrix(y_true, y_pred, labels=labels)
     cm = pd.DataFrame(cm, index=class_names, columns=class_names)
