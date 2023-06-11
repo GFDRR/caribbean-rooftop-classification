@@ -1,7 +1,5 @@
 import os
 import sys
-import json_fix
-import json
 import time
 import random
 import argparse
@@ -15,19 +13,11 @@ import torch
 sys.path.insert(0, "./utils/")
 import config
 import cnn_utils
+import eval_utils
 import wandb
 
 # Get device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-json.fallback_table[np.ndarray] = lambda array: array.tolist()
-
-
-def save_results(results, cm, exp_dir):
-    with open(os.path.join(exp_dir, "results.json"), "w") as f:
-        json.dump(results, f)
-    cm[0].to_csv(os.path.join(exp_dir, "confusion_matrix.csv"))
-    cm[1].to_csv(os.path.join(exp_dir, "cm_metrics.csv"))
-    file = open(os.path.join(exp_dir, "cm_report.log"), "a").write(cm[2])
 
 
 def main(c):
@@ -104,7 +94,7 @@ def main(c):
             best_weights = model.state_dict()
             model.load_state_dict(best_weights)
             
-            save_results(val_results, val_cm, exp_dir)
+            eval_utils.save_results(val_results, val_cm, exp_dir)
             model_file = os.path.join(exp_dir, "best_model.pth")
             torch.save(model.state_dict(), model_file)
 
@@ -131,7 +121,7 @@ def main(c):
     )
 
     # Save results in experiment directory
-    save_results(test_results, test_cm, exp_dir)
+    eval_utils.save_results(test_results, test_cm, exp_dir)
 
     # Save best mode
     model_file = os.path.join(exp_dir, "best_model.pth")
