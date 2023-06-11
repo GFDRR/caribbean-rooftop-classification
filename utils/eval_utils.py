@@ -1,4 +1,8 @@
+import os
+import json_fix
+import json
 import pandas as pd
+import numpy as np
 from sklearn.metrics import (
     make_scorer,
     confusion_matrix,
@@ -9,6 +13,15 @@ from sklearn.metrics import (
     f1_score,
     classification_report,
 )
+json.fallback_table[np.ndarray] = lambda array: array.tolist()
+
+
+def save_results(results, cm, exp_dir):
+    with open(os.path.join(exp_dir, "results.json"), "w") as f:
+        json.dump(results, f)
+    cm[0].to_csv(os.path.join(exp_dir, "confusion_matrix.csv"))
+    cm[1].to_csv(os.path.join(exp_dir, "cm_metrics.csv"))
+    file = open(os.path.join(exp_dir, "cm_report.log"), "a").write(cm[2])
 
 
 def get_confusion_matrix(y_true, y_pred, class_names):
@@ -29,7 +42,10 @@ def get_confusion_matrix(y_true, y_pred, class_names):
     y_pred = pd.Series(y_pred, name="Predicted")
     y_true = pd.Series(y_true, name="Actual")
 
-    cm = confusion_matrix(y_true, y_pred, labels=list(range(len(class_names))))
+    labels = class_names
+    if isinstance(list(y_true)[0], int):
+        labels = list(range(len(class_names)))
+    cm = confusion_matrix(y_true, y_pred, labels=labels)
     cm = pd.DataFrame(cm, index=class_names, columns=class_names)
 
     cm_metrics = _get_cm_metrics(cm, list(cm.columns))
@@ -90,26 +106,16 @@ def evaluate(y_true, y_pred):
     return {
         "overall_accuracy": accuracy_score(y_true, y_pred) * 100,
         "balanced_accuracy": balanced_accuracy_score(y_true, y_pred) * 100,
-        "f1_score_micro": f1_score(y_true, y_pred, average="micro", zero_division=0)
-        * 100,
+        "f1_score_micro": f1_score(y_true, y_pred, average="micro", zero_division=0) * 100,
         "f1_score": f1_score(y_true, y_pred, average="macro", zero_division=0) * 100,
-        "precision_score": precision_score(
-            y_true, y_pred, average="macro", zero_division=0
-        )
-        * 100,
-        "recall_score": recall_score(y_true, y_pred, average="macro", zero_division=0)
-        * 100,
+        "precision_score": precision_score(y_true, y_pred, average="macro", zero_division=0) * 100,
+        "recall_score": recall_score(y_true, y_pred, average="macro", zero_division=0) * 100,
         "f1_per_class": f1_score(y_true, y_pred, average=None, zero_division=0) * 100,
-        "precision_per_class": precision_score(
-            y_true, y_pred, average=None, zero_division=0
-        )
-        * 100,
-        "recall_per_class": recall_score(y_true, y_pred, average=None, zero_division=0)
-        * 100,
+        "precision_per_class": precision_score(y_true, y_pred, average=None, zero_division=0) * 100,
+        "recall_per_class": recall_score(y_true, y_pred, average=None, zero_division=0) * 100,
     }
 
 
 def get_scoring():
     """Returns the dictionary of scorer objects."""
-
-    return {"f1_score": make_scorer(f1_score)}
+    return {"f1_score": make_scorer(f1_score, average='macro')}
