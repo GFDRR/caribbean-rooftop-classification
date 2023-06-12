@@ -45,7 +45,7 @@ def extract_probs_embedding(model, c, input_file):
     return probs, embedding
 
 
-def predict(data, c1, c2, model1, model2):
+def predict(data, c1, c2, model1, model2, source1=None, source2=None):
     output = []
     for index in tqdm(range(len(data)), total=len(data)):
         classes = geoutils.classes_dict[c1['attribute']]
@@ -160,5 +160,6 @@ if __name__ == "__main__":
 
     # Load config
     c = config.create_config(args.exp_config)
+    print(c)
 
     main(c)
