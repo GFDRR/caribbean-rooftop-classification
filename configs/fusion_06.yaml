@@ -2,19 +2,21 @@ config1: "./configs/config_09.yaml"
 config2: "./configs/config_06.yaml"
 exp_dir: "./exp/"
 exp_name: 'exp-11'
-mode: 'fusion_probs'
+mode: 'fusion_embeds'
 
-model: 'LogisticRegression'
+model: 'RandomForestClassifier'
 model_params:
-    solver: ['lbfgs', 'liblinear']
-    penalty: ['l1', 'l2']
-    C: [0.001, 0.01, 0.1, 1.0]
+    n_estimators: ['range', 100, 1000, 50]
+    criterion: ['gini', 'entropy']
+    max_depth: ['range', 3, 10]
+    bootstrap: [True, False]
 selector: 
 selector_params:
 scalers: ['MinMaxScaler', 'StandardScaler', 'RobustScaler']
-cv: "GridSearchCV"
+cv: "RandomizedSearchCV"
 cv_params:
    refit: 'f1_score'
+   n_iter: 30
    verbose: 1
    n_jobs: -1
 
