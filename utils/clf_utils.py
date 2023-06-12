@@ -94,7 +94,7 @@ def get_model(model):
     elif model == "RidgeClassifier":
         return RidgeClassifier(random_state=SEED)
     elif model == "LinearSVC":
-        return LinearSVC(max_iter=1000, random_state=SEED)
+        return LinearSVC(max_iter=1000, verbose=1, random_state=SEED)
     elif model == "SVC":
         return SVC(random_state=SEED)
     elif model == "NuSVC":
