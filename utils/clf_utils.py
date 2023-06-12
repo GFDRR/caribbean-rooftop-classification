@@ -88,7 +88,7 @@ def get_model(model):
     assert model in MODELS
 
     if model == "LogisticRegression":
-        return LogisticRegression(max_iter=1000, random_state=SEED)
+        return LogisticRegression(max_iter=1000, n_jobs=-1, random_state=SEED)
     elif model == "SGDClassifier":
         return SGDClassifier(random_state=SEED)
     elif model == "RidgeClassifier":
@@ -100,7 +100,7 @@ def get_model(model):
     elif model == "NuSVC":
         return NuSVC(random_state=SEED)
     elif model == "RandomForestClassifier":
-        return RandomForestClassifier(verbose=5, random_state=SEED)
+        return RandomForestClassifier(verbose=1, n_jobs=-1, random_state=SEED)
     elif model == "GradientBoostingClassifier":
         return GradientBoostingClassifier(random_state=SEED)
     elif model == "AdaBoostClassifier":
