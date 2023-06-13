@@ -1,0 +1,6 @@
+config1: "./configs/config_04.yaml"
+config2: "./configs/config_05.yaml"
+exp_dir: "./exp/"
+exp_name: 'exp-10'
+mode: 'fusion_mean'
+
