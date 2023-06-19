@@ -23,44 +23,78 @@ import model_utils
 import torch.nn.functional as nn
 
 
-cnn_arch = {'resnet50': 2048, 'inceptionv3': 2048, 'efficientnetb0': 1280}
+CNN_ARCH = {"resnet50": 2048, "inceptionv3": 2048, "efficientnetb0": 1280}
+
 
 def extract_probs_embedding(model, c, input_file):
-    # Source: https://becominghuman.ai/extract-a-feature-vector-for-any-image-with-pytorch-9717561d1d4c
+    """Extracts deep feature embeddings from the trained CNN model.
+    Source: https://becominghuman.ai/extract-a-feature-vector-for-any-image-with-pytorch-9717561d1d4c
+
+    Args:
+        model (nn.Module): Neural network to be used for feature extraction.
+        c (dict): Config file.
+        input_file (str): The image file for which to extract the feature embeddings.
+
+    Returns:
+        array: An array containing the class probabilities.
+        array: An array containing the feature embedding.
+    """
+
     def copy_data(m, i, o):
         embedding.copy_(o.data.reshape(o.data.size(1)))
+
     image = cnn_utils.read_image(input_file, c["mode"])
     transforms = cnn_utils.get_transforms(c["img_size"], c["mode"])
-    
-    embedding_size = cnn_arch[c['model']]
+
+    embedding_size = CNN_ARCH[c["model"]]
     embedding = torch.zeros(embedding_size)
-    layer = model._modules.get('avgpool')
+    layer = model._modules.get("avgpool")
     h = layer.register_forward_hook(copy_data)
-    
+
     output = model(transforms["test"](image).unsqueeze(0))
     probs = nn.softmax(output, dim=1).detach().numpy()[0]
     embedding = embedding.detach().numpy()
-    
+
     h.remove()
     return probs, embedding
 
 
-def predict(data, c1, c2, model1, model2, source1=None, source2=None):
+def predict(data, c1, c2, model1, model2, source1=None, source2=None, scale=1.5):
     output = []
-    for index in tqdm(range(len(data)), total=len(data)):
-        classes = geoutils.classes_dict[c1['attribute']]
-        
-        file1 = data.iloc[index].file1
+    pbar = tqdm(
+        enumerate(data.iterrows()),
+        total=len(data),
+        bar_format="{l_bar}{bar:15}{r_bar}{bar:-15b}",
+    )
+    for index, (_, row) in pbar:
+        classes = geoutils.classes_dict[c1["attribute"]]
+
+        if "file1" in data.columns:
+            file1 = data.iloc[index].file1
+        else:
+            file1 = "temp.tif"
+            if os.path.exists(file1):
+                os.remove(file1)
+            shape = data[(data.UID == row["UID"])]
+            geoutils.crop_shape(shape, "temp.shp", scale, source1, file1)
+
         model1_probs, model1_embeds = extract_probs_embedding(model1, c1, file1)
         model1_pred = str(classes[np.argmax(model1_probs)])
 
-        file2 = data.iloc[index].file2
+        if "file2" in data.columns:
+            file2 = data.iloc[index].file2
+        else:
+            file2 = "temp.tif"
+            os.remove(file2)
+            shape = data[(data.UID == row["UID"])]
+            geoutils.crop_shape(shape, "temp.shp", scale, source2, file2)
+
         model2_probs, model2_embeds = extract_probs_embedding(model2, c2, file2)
         model2_pred = str(classes[np.argmax(model2_probs)])
 
         mean_probs = np.mean([model1_probs, model2_probs], axis=0)
         mean_pred = str(classes[np.argmax(mean_probs)])
-        
+
         probs = list(model1_probs) + list(model2_probs) + list(mean_probs)
         embeds = list(model1_embeds) + list(model2_embeds)
         preds = [model1_pred, model2_pred, mean_pred]
@@ -78,80 +112,98 @@ def predict(data, c1, c2, model1, model2, source1=None, source2=None):
     return output
 
 
-def main(c):    
-    out_dir = os.path.join(c['exp_dir'], c['exp_name'])
+def get_features(c, data):
+    """Returns the list of feature names depending on the fusion strategy.
+
+    Args:
+        c (dict): Config file.
+        data (Pandas DataFrame): The dataframe of feature embeddings and class probabilities.
+
+    Returns:
+        list: Contains a list of string value indicating the feature names.
+    """
+
+    if c["mode"] == "fusion_probs":
+        features = [
+            x for x in data.columns if ("model1_prob" in x) or ("model2_prob" in x)
+        ]
+    elif c["mode"] == "fusion_embeds":
+        features = [
+            x
+            for x in data.columns
+            if ("model1_embedding" in x) or ("model2_embedding" in x)
+        ]
+    return features
+
+
+def main(c):
+    out_dir = os.path.join(c["exp_dir"], c["exp_name"])
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     output_file = os.path.join(out_dir, "output.csv")
-    
+
     c1 = config.create_config(c["config1"])
     c2 = config.create_config(c["config2"])
+    print(c1)
+    print(c2)
     classes = geoutils.classes_dict[c1["attribute"]]
-    
-    if not os.path.exists(output_file):                
-        exp_dir = os.path.join(c['exp_dir'], c1['exp_name'])
+
+    if not os.path.exists(output_file):
+        exp_dir = os.path.join(c["exp_dir"], c1["exp_name"])
         model1 = pred_utils.load_model(c1, exp_dir=exp_dir, n_classes=len(classes))
-        exp_dir = os.path.join(c['exp_dir'], c2['exp_name'])
+        exp_dir = os.path.join(c["exp_dir"], c2["exp_name"])
         model2 = pred_utils.load_model(c2, exp_dir=exp_dir, n_classes=len(classes))
 
         csv_file = os.path.join(c1["csv_dir"], f"{c1['attribute']}.csv")
         data = pd.read_csv(csv_file)
-        
-        def f(x, c): 
+
+        def f(x, c):
             return os.path.join(c["data_dir"], c["attribute"], x.label, x.filename)
-        data['file1'] = data.apply(lambda x: f(x, c1), axis=1)
-        data['file2'] = data.apply(lambda x: f(x, c2), axis=1)
+
+        data["file1"] = data.apply(lambda x: f(x, c1), axis=1)
+        data["file2"] = data.apply(lambda x: f(x, c2), axis=1)
         output = predict(data, c1, c2, model1, model2)
-        
-        output['UID'] = data.filename.values
-        output['dataset'] = data.dataset.values
-        output['label'] = data.label.values
-    
+
+        output["UID"] = data.filename.values
+        output["dataset"] = data.dataset.values
+        output["label"] = data.label.values
+
         output.to_csv(output_file, index=False)
-    
+
     output = pd.read_csv(output_file)
-    test = output[output.dataset == 'test']
-    train = output[output.dataset == 'train']
-    
-    results_dir = os.path.join(out_dir, c['mode'])
+    test = output[output.dataset == "test"]
+    train = output[output.dataset == "train"]
+
+    results_dir = os.path.join(out_dir, c["mode"])
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
-    
+
     # Get results for mean of softmax probabilities
-    if c['mode'] == 'fusion_mean':
+    if c["mode"] == "fusion_mean":
         preds = test["mean_pred"]
     else:
-        results_dir = os.path.join(results_dir, c['model'])
+        results_dir = os.path.join(results_dir, c["model"])
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
-        if c['mode'] == 'fusion_probs':
-            features = [
-                x for x in output.columns
-                if ('model1_prob' in x) or ('model2_prob' in x)
-            ]
-        elif c['mode'] == 'fusion_embeds':
-            features = [
-                x for x in output.columns
-                if ('model1_embedding' in x) or ('model2_embedding' in x)
-            ]
+        features = get_features(c, output)
         target = "label"
-        
+
         cv = model_utils.model_trainer(c, train, features, target)
         print(cv.best_estimator_)
         print(cv.best_score_)
-        
+
         model = cv.best_estimator_
         model.fit(train[features], train[target].values)
         preds = model.predict(test[features])
-            
+
         model_file = os.path.join(results_dir, "best_model.pkl")
         joblib.dump(model, model_file)
-    
+
     results = eval_utils.evaluate(test["label"], preds)
     cm = eval_utils.get_confusion_matrix(test["label"], preds, classes)
     eval_utils.save_results(results, cm, results_dir)
-            
-        
+
+
 if __name__ == "__main__":
     # Parser
     parser = argparse.ArgumentParser(description="Data Fusion")
