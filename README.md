@@ -8,7 +8,7 @@
 <a href="https://black.readthedocs.io/en/stable/"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-black.svg?style=for-the-badge&labelColor=gray"></a>
 
 ## 📜 Description
-This work leverages convolutional neural networks (CNNs) and data fusion techniques for the automated classification of rooftop  characteristics from very high-resolution orthophotos and airborne LiDAR data obtained in Dominica. 
+This work leverages convolutional neural networks (CNNs) and data fusion techniques for the automated classification of rooftop  characteristics from very high-resolution orthophotos and airborne LiDAR data. 
 
 The Digital Earth for a Resilient Caribbean project is intended to help governments produce more timely building information to improve resilience and disaster response in the Caribbean.
 
