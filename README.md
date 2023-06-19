@@ -13,15 +13,18 @@ This work leverages convolutional neural networks (CNNs) and data fusion techniq
 
 The Digital Earth for a Resilient Caribbean project aims help governments produce more timely building information to improve resilience and disaster response in the Caribbean.
 
+## ⚙️ Local Setup for Development
+This repo assumes the use of [conda](https://docs.conda.io/en/latest/miniconda.html) for simplicity in installing GDAL. More info on how to install GDAL can be found
+
+
 ## 🗄 File Organization
 ### Data Directory
 The datasets are organized as follows:
 ```
 data
 ├── csv
-│   └──version-01
-│       ├── roof_material.csv
-│       └── roof_type.csv
+│   ├── roof_material.csv
+│   └── roof_type.csv
 ├── rasters
 │   ├── drone
 │   │   └── drone_colihaut_DOM.tif
@@ -32,28 +35,24 @@ data
 │   ├── ortho
 │   │   └── ortho_DOM.tif
 │   └── tiles
-│       └── version-01
-│           ├── ndsm
-│           │   ├── roof_material
-│           │   │   ├── BLUE_TARP
-│           │   │   ├── CONCRETE_CEMENT
-│           │   │   ├── HEALTHY_METAL
-│           │   │   ├── IRREGULAR_METAL
-│           │   │   └── INCOMPLETE
-│           │   └── roof_type
-│           │       ├── FLAT
-│           │       ├── GABLE
-│           │       ├── HIP
-│           │       └── NO_ROOF
-│           └── ortho
-│               ├── roof_material
-│               └── roof_type
+│     	├── ndsm
+│       │   ├── roof_material
+│       │   │   ├── BLUE_TARP
+│       │   │   ├── CONCRETE_CEMENT
+│       │   │   ├── HEALTHY_METAL
+│       │   │   ├── IRREGULAR_METAL
+│       │   │   └── INCOMPLETE
+│       │   └── roof_type
+│       │       ├── FLAT
+│       │       ├── GABLE
+│       │       ├── HIP
+│       │       └── NO_ROOF
+│       └── ortho
+│           ├── roof_material
+│           └── roof_type
 └── vectors
 	├── annotation_tiles_DOM.gpkg
     ├── building_footprints_DOM.gpkg
     ├── building_footprints_annotated_DOM.gpkg
     └── geoboundaries_DOM.gpkg
 ```
-
-## ⚙️ Local Setup for Development
-This repo assumes the use of [conda](https://docs.conda.io/en/latest/miniconda.html) for simplicity in installing GDAL.
