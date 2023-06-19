@@ -9,19 +9,14 @@ from tqdm import tqdm
 
 
 classes_dict = {
-    'roof_material': [
-        'BLUE_TARP', 
-        'CONCRETE_CEMENT', 
-        'HEALTHY_METAL', 
-        'INCOMPLETE', 
-        'IRREGULAR_METAL'
+    "roof_material": [
+        "BLUE_TARP",
+        "CONCRETE_CEMENT",
+        "HEALTHY_METAL",
+        "INCOMPLETE",
+        "IRREGULAR_METAL",
     ],
-    'roof_type': [
-        'FLAT', 
-        'GABLE', 
-        'HIP', 
-        'NO_ROOF'
-    ]
+    "roof_type": ["FLAT", "GABLE", "HIP", "NO_ROOF"],
 }
 
 
@@ -56,7 +51,7 @@ def inspect_image_crops(
     data = data[data[column] == value]
     samples = data.iloc[index : index + (n_rows * n_cols)].iterrows()
     row_index, col_index = 0, 0
-    
+
     for _, item in samples:
         filename = f"{iso}_{item.UID}.tif"
         ndsm_filepath = os.path.join(ndsm_path, column, value, filename)
@@ -105,7 +100,7 @@ def visualize_image_crops(
             axes[i].set_title(file, fontdict={"fontsize": 9})
             remove_ticks(axes[i])
 
-            
+
 def crop_shape(shape, filename, scale, in_file, out_file):
     shape.geometry = shape.geometry.apply(lambda x: x.minimum_rotated_rectangle)
     shape.geometry = shape.geometry.scale(scale, scale)
@@ -115,7 +110,7 @@ def crop_shape(shape, filename, scale, in_file, out_file):
         shell=True,
     )
 
-    
+
 def generate_image_crops(data, column, in_file, out_dir, iso, scale=1.5, clip=False):
     print(f"{column} size: {data[~data[column].isna()].shape}")
     data = data[(~data[column].isna())]
@@ -136,7 +131,7 @@ def generate_image_crops(data, column, in_file, out_dir, iso, scale=1.5, clip=Fa
             shape = data[(data.UID == uid)]
             filename = "temp.gpkg"
             crop_shape(shape, filename, scale, in_file, out_file)
-            
+
             if clip:
                 with rio.open(out_file) as image:
                     meta = image.meta

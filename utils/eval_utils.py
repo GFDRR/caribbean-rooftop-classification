@@ -13,6 +13,7 @@ from sklearn.metrics import (
     f1_score,
     classification_report,
 )
+
 json.fallback_table[np.ndarray] = lambda array: array.tolist()
 
 
@@ -106,16 +107,25 @@ def evaluate(y_true, y_pred):
     return {
         "overall_accuracy": accuracy_score(y_true, y_pred) * 100,
         "balanced_accuracy": balanced_accuracy_score(y_true, y_pred) * 100,
-        "f1_score_micro": f1_score(y_true, y_pred, average="micro", zero_division=0) * 100,
+        "f1_score_micro": f1_score(y_true, y_pred, average="micro", zero_division=0)
+        * 100,
         "f1_score": f1_score(y_true, y_pred, average="macro", zero_division=0) * 100,
-        "precision_score": precision_score(y_true, y_pred, average="macro", zero_division=0) * 100,
-        "recall_score": recall_score(y_true, y_pred, average="macro", zero_division=0) * 100,
+        "precision_score": precision_score(
+            y_true, y_pred, average="macro", zero_division=0
+        )
+        * 100,
+        "recall_score": recall_score(y_true, y_pred, average="macro", zero_division=0)
+        * 100,
         "f1_per_class": f1_score(y_true, y_pred, average=None, zero_division=0) * 100,
-        "precision_per_class": precision_score(y_true, y_pred, average=None, zero_division=0) * 100,
-        "recall_per_class": recall_score(y_true, y_pred, average=None, zero_division=0) * 100,
+        "precision_per_class": precision_score(
+            y_true, y_pred, average=None, zero_division=0
+        )
+        * 100,
+        "recall_per_class": recall_score(y_true, y_pred, average=None, zero_division=0)
+        * 100,
     }
 
 
 def get_scoring():
     """Returns the dictionary of scorer objects."""
-    return {"f1_score": make_scorer(f1_score, average='macro')}
+    return {"f1_score": make_scorer(f1_score, average="macro")}
