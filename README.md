@@ -51,7 +51,7 @@ data
 │           ├── roof_material
 │           └── roof_type
 └── vectors
-	├── annotation_tiles_DOM.gpkg
+    ├── annotation_tiles_DOM.gpkg
     ├── building_footprints_DOM.gpkg
     ├── building_footprints_annotated_DOM.gpkg
     └── geoboundaries_DOM.gpkg
