@@ -1,10 +1,11 @@
-h2 {
+h1 {
     margin: 0;
 }
 
 <div align="center">
 
-# Digital Earth for a Resilient Caribbean <br><sup>Data Fusion of Post-disaster Aerial Imagery and LiDAR Data for Rooftop Classification using Convolutional Neural Networks</sup>
+# Digital Earth for a Resilient Caribbean 
+## Data Fusion of Post-disaster Aerial Imagery and LiDAR Data for Rooftop Classification using Convolutional Neural Networks
 
 </div>
 
