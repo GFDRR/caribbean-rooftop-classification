@@ -53,7 +53,7 @@ def main(c):
         step_size=c["step_size"],
         patience=c["patience"],
         dropout=c["dropout"],
-        mode=c['mode'],
+        mode=c["mode"],
         device=device,
     )
     print(model)
@@ -70,6 +70,7 @@ def main(c):
         print("\nEpoch {}/{}".format(epoch, n_epochs))
         print("-" * 10)
 
+        # Train model
         train_results = cnn_utils.train(
             data_loader["train"],
             model,
@@ -78,22 +79,18 @@ def main(c):
             device,
             wandb=wandb,
         )
+        # Evauate model
         val_results, val_cm = cnn_utils.evaluate(
-            data_loader["test"], 
-            classes,
-            model, 
-            criterion, 
-            device, 
-            wandb=wandb
+            data_loader["test"], classes, model, criterion, device, wandb=wandb
         )
-        scheduler.step(val_results['loss'])
+        scheduler.step(val_results["loss"])
 
         # Save best model so far
         if val_results["f1_score"] > best_score:
             best_score = val_results["f1_score"]
             best_weights = model.state_dict()
             model.load_state_dict(best_weights)
-            
+
             eval_utils.save_results(val_results, val_cm, exp_dir)
             model_file = os.path.join(exp_dir, "best_model.pth")
             torch.save(model.state_dict(), model_file)

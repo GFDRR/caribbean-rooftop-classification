@@ -17,12 +17,12 @@ import torchvision
 from torchvision import datasets, models, transforms
 import torchvision.transforms.functional as F
 from torchvision.models import (
-    ResNet18_Weights, 
-    ResNet34_Weights, 
-    ResNet50_Weights, 
-    Inception_V3_Weights, 
+    ResNet18_Weights,
+    ResNet34_Weights,
+    ResNet50_Weights,
+    Inception_V3_Weights,
     VGG16_Weights,
-    EfficientNet_B0_Weights
+    EfficientNet_B0_Weights,
 )
 from sklearn.preprocessing import minmax_scale
 
@@ -33,32 +33,36 @@ SEED = 42
 
 
 def get_imagenet_mean_std(mode):
-    if mode == 'RGB':
-         return [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
-    elif mode == 'GRAYSCALE':
+    if mode == "RGB":
+        return [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+    elif mode == "GRAYSCALE":
         # Source: https://stackoverflow.com/a/65717887
-        return [0.44531356896770125, ], [0.2692461874154524]
-    
-    
+        return [
+            0.44531356896770125,
+        ], [0.2692461874154524]
+
+
 def read_image(filename, mode):
-    if mode == 'RGB':
+    if mode == "RGB":
         image = Image.open(filename).convert("RGB")
-    elif mode == 'GRAYSCALE':
+    elif mode == "GRAYSCALE":
         src = rio.open(filename)
         image = src.read([1]).squeeze()
         image[image < 0] = 0
-        image = Image.fromarray(image, mode='F')
+        image = Image.fromarray(image, mode="F")
         src.close()
     return image
 
 
 class CaribbeanDataset(Dataset):
-    def __init__(self, dataset, image_folder, attribute, classes, mode='RGB', transform=None):
+    def __init__(
+        self, dataset, image_folder, attribute, classes, mode="RGB", transform=None
+    ):
         self.dataset = dataset
         self.image_folder = image_folder
         self.attribute = attribute
         self.transform = transform
-        self.classes = classes 
+        self.classes = classes
         self.mode = mode
 
     def __getitem__(self, index):
@@ -68,11 +72,12 @@ class CaribbeanDataset(Dataset):
             self.image_folder, self.attribute, item["label"], filename
         )
         image = read_image(filename, self.mode)
-            
+
         if self.transform:
             x = self.transform(image)
-            
+
         y = self.classes[item["label"]]
+        image.close()
         return x, y
 
     def __len__(self):
@@ -91,7 +96,7 @@ class SquarePad:
         return F.pad(image, padding, 0, "constant")
 
 
-def visualize_data(data, data_loader, phase="test", mode='RGB', n=4):
+def visualize_data(data, data_loader, phase="test", mode="RGB", n=4):
     imagenet_mean, imagenet_std = get_imagenet_mean_std(mode)
     inputs, classes = next(iter(data_loader[phase]))
     fig, axes = plt.subplots(n, n, figsize=(6, 6))
@@ -103,11 +108,13 @@ def visualize_data(data, data_loader, phase="test", mode='RGB', n=4):
         for j in range(n):
             image = inputs[i * n + j].numpy().transpose((1, 2, 0))
             title = key_list[val_list.index(classes[i * n + j])]
-            if mode == 'RGB': 
-                image = np.clip(np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1)
+            if mode == "RGB":
+                image = np.clip(
+                    np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1
+                )
                 axes[i, j].imshow(image)
-            elif mode == 'GRAYSCALE': 
-                axes[i, j].imshow(image, cmap='viridis', norm='linear')
+            elif mode == "GRAYSCALE":
+                axes[i, j].imshow(image, cmap="viridis", norm="linear")
             axes[i, j].set_title(title, fontdict={"fontsize": 7})
             axes[i, j].axis("off")
 
@@ -122,9 +129,9 @@ def load_dataset(config, phases):
 
     data = {
         phase: CaribbeanDataset(
-            dataset[dataset.dataset == phase].sample(
-                frac=1, random_state=SEED
-            ).reset_index(drop=True),
+            dataset[dataset.dataset == phase]
+            .sample(frac=1, random_state=SEED)
+            .reset_index(drop=True),
             config["data_dir"],
             config["attribute"],
             classes,
@@ -172,8 +179,8 @@ def train(data_loader, model, criterion, optimizer, device, wandb=None):
 
     epoch_loss = running_loss / len(data_loader)
     epoch_results = eval_utils.evaluate(y_actuals, y_preds)
-    epoch_results['loss'] = epoch_loss
-    
+    epoch_results["loss"] = epoch_loss
+
     learning_rate = optimizer.param_groups[0]["lr"]
     print(f"Loss: {epoch_loss} {epoch_results} LR: {learning_rate}")
 
@@ -204,8 +211,8 @@ def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
 
     epoch_loss = running_loss / len(data_loader)
     epoch_results = eval_utils.evaluate(y_actuals, y_preds)
-    epoch_results['loss'] = epoch_loss
-    
+    epoch_results["loss"] = epoch_loss
+
     confusion_matrix, cm_metrics, cm_report = eval_utils.get_confusion_matrix(
         y_actuals, y_preds, class_names
     )
@@ -216,7 +223,7 @@ def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
     return epoch_results, (confusion_matrix, cm_metrics, cm_report)
 
 
-def get_transforms(size, mode='RGB'):
+def get_transforms(size, mode="RGB"):
     imagenet_mean, imagenet_std = get_imagenet_mean_std(mode)
 
     return {
@@ -251,13 +258,15 @@ def get_model(model_type, n_classes, mode, dropout=0):
             model = models.resnet34(weights=ResNet34_Weights.DEFAULT)
         elif model_type == "resnet50":
             model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
-            
-        if mode == 'GRAYSCALE':
-            #source: https://datascience.stackexchange.com/a/65784
+
+        if mode == "GRAYSCALE":
+            # source: https://datascience.stackexchange.com/a/65784
             weights = model.conv1.weight
-            model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            model.conv1 = nn.Conv2d(
+                1, 64, kernel_size=7, stride=2, padding=3, bias=False
+            )
             model.conv1.weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
-            
+
         num_ftrs = model.fc.in_features
         if dropout > 0:
             model.fc = nn.Sequential(
@@ -265,44 +274,53 @@ def get_model(model_type, n_classes, mode, dropout=0):
             )
         else:
             model.fc = nn.Linear(num_ftrs, n_classes)
-            
-    if 'inception' in model_type:
-        if mode == 'RGB':
+
+    if "inception" in model_type:
+        if mode == "RGB":
             model = models.inception_v3(weights=Inception_V3_Weights.IMAGENET1K_V1)
-        elif mode == 'GRAYSCALE':
+        elif mode == "GRAYSCALE":
             model = models.inception_v3(
-                weights=Inception_V3_Weights.IMAGENET1K_V1, 
-                transform_input=False
+                weights=Inception_V3_Weights.IMAGENET1K_V1, transform_input=False
             )
             weights = model.Conv2d_1a_3x3.conv.weight.clone()
-            model.Conv2d_1a_3x3.conv = nn.Conv2d(1, 32, kernel_size=3, stride=2, bias=False)
-            model.Conv2d_1a_3x3.conv.weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
-        
+            model.Conv2d_1a_3x3.conv = nn.Conv2d(
+                1, 32, kernel_size=3, stride=2, bias=False
+            )
+            model.Conv2d_1a_3x3.conv.weight = nn.Parameter(
+                torch.mean(weights, dim=1, keepdim=True)
+            )
+
         model.aux_logits = False
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, n_classes)
-        
-    if 'vgg' in model_type:
+
+    if "vgg" in model_type:
         model = models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
-        if mode == 'GRAYSCALE':
+        if mode == "GRAYSCALE":
             weights = model.features[0].weight.clone()
-            model.features[0] = nn.Conv2d(1, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-            model.features[0].weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
-        
+            model.features[0] = nn.Conv2d(
+                1, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)
+            )
+            model.features[0].weight = nn.Parameter(
+                torch.mean(weights, dim=1, keepdim=True)
+            )
+
         num_ftrs = model.classifier[6].in_features
         model.classifier[6] = nn.Linear(num_ftrs, n_classes)
-    
-    if 'efficientnet' in model_type:
+
+    if "efficientnet" in model_type:
         model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
-        if mode == 'GRAYSCALE':
+        if mode == "GRAYSCALE":
             weights = model.features[0][0].weight.clone()
             model.features[0][0] = nn.Conv2d(
                 1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False
             )
-            model.features[0][0].weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
+            model.features[0][0].weight = nn.Parameter(
+                torch.mean(weights, dim=1, keepdim=True)
+            )
         num_ftrs = model.classifier[1].in_features
         model.classifier[1] = nn.Linear(num_ftrs, n_classes)
-        
+
     return model
 
 
@@ -312,7 +330,7 @@ def load_model(
     pretrained,
     scheduler_type,
     optimizer_type,
-    mode='RGB',
+    mode="RGB",
     lr=0.001,
     momentum=0.9,
     gamma=0.1,
@@ -383,10 +401,11 @@ def generate_train_test(
     data.dataset = data.dataset.fillna("train")
 
     if verbose:
-        value_counts = pd.concat([
-            data.label.value_counts(), 
-            data.label.value_counts(normalize=True)
-        ], axis=1, keys=["counts", "percentage"])
+        value_counts = pd.concat(
+            [data.label.value_counts(), data.label.value_counts(normalize=True)],
+            axis=1,
+            keys=["counts", "percentage"],
+        )
         print(value_counts)
 
         subcounts = pd.DataFrame(

@@ -57,13 +57,13 @@ def _get_pipeline(model, selector):
     Returns:
         sklearn pipeline instance.
     """
-    
+
     if model in clf_utils.MODELS:
         model = clf_utils.get_model(model)
-    
+
     if selector in clf_utils.SELECTORS:
         selector = clf_utils.get_selector(selector)
-        
+
     return Pipeline(
         [
             ("scaler", "passthrough"),
@@ -97,8 +97,7 @@ def _get_params(scalers, model_params, selector_params):
 
     if model_params:
         model_params = {
-            "model__" + name: _get_range(param) 
-            for name, param in model_params.items()
+            "model__" + name: _get_range(param) for name, param in model_params.items()
         }
     else:
         model_params = {}
@@ -110,9 +109,9 @@ def _get_params(scalers, model_params, selector_params):
         }
     else:
         selector_params = {}
-    
+
     params = [model_params, selector_params, scalers]
-        
+
     return dict(collections.ChainMap(*params))
 
 
@@ -145,13 +144,13 @@ def get_cv(c):
     elif cv == "GridSearchCV":
         return GridSearchCV(pipe, params, scoring=scoring, **cv_params)
 
-    
+
 def model_trainer(c, data, features, target):
     print("Features: {}, Target: {}".format(features, target))
 
     X = data[features]
     y = data[target].values
-    
+
     cv = get_cv(c)
     cv.fit(X, y)
 
