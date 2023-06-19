@@ -1,6 +1,7 @@
 <div align="center">
 
-# Digital Earth for a Resilient Caribbean
+# Digital Earth for a Resilient Caribbean 
+## Data Fusion of Post-disaster Aerial Imagery and LiDAR Data for Rooftop Classification using Convolutional Neural Networks
 
 </div>
 
