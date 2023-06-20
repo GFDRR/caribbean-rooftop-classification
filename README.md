@@ -33,7 +33,7 @@ To generate our ground truth dataset, we used the following three data sources f
 ### Roof Characteristics
 We annotated a total of 8,345 buildings according to two attributes: (1) roof type and (2) roof material. The following figures below illustrate examples of the RGB orthophoto and LiDAR-derived image patches.
 <p>
-<img src="./assets/roof-characteristics.png" width="70%" height="70%" />
+<img src="./assets/roof-characteristics.png" width="80%" height="80%" />
 
 ## 💹 Methods
 ### Data Fusion Strategies
@@ -44,8 +44,26 @@ We experiment with different data fusion strategies for combining RGB orthophoto
 <b>B. Decision-level integration</b> -  fuses the results of prior classification models using model stacking/model blending techniques, e.g. getting the mean of the softmax layers or by concatenating the softmax layers into a single vector to be used as input into an auxiliary ML model.
 
 ## ⚙️ Setup
-This repo assumes the use of [conda](https://docs.conda.io/en/latest/miniconda.html) for simplicity in installing GDAL. More info on how to install GDAL can be found [here]().
+This repo assumes the use of [conda](https://docs.conda.io/en/latest/miniconda.html) for simplicity in installing GDAL. More info on how to install GDAL can be found [here](https://ljvmiranda921.github.io/notebook/2019/04/13/install-gdal/).
 
+### One-time Set-up
+1. Install Anaconda/Miniconda for your environment from [here](https://docs.conda.io/en/latest/miniconda.html).
+2. Create a local python environment and activate it.
+* Note:
+    * You can change the name if you want; in this example, the env name is `venv`.
+```bash
+conda create -n venv
+conda activate venv
+```
+3. Clone this repo and navigate into the folder. For example:
+```bash
+git clone https://github.com/GFDRR/caribbean-rooftop-classification.git
+cd caribbean-rooftop-classification
+```
+4. Install the project dependencies by running:
+```bash
+pip install -r requirements.txt 
+```
 
 ## 🗄 File Organization
 ### Data Directory
