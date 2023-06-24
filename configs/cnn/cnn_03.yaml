@@ -1,20 +1,21 @@
-data_dir: './data/rasters/Tiles/ndsm/'
+data_dir: './data/rasters/tiles/'
 csv_dir: './data/csv/'
+version: 'version-01'
 attribute: 'roof_material'
-exp_name: 'exp-12'
-mode: 'GRAYSCALE'
+exp_name: 'exp-03'
+mode: 'RGB'
 batch_size: 32
 n_workers: 4
 n_epochs: 30
 
-model: "efficientnetb0"
+model: "inceptionv3"
 pretrained: True
 scheduler: "ReduceLROnPlateau"
 optimizer: "Adam"
 lr: 0.00001
-img_size: 224
+img_size: 299
 momentum: 
 gamma: 
 step_size: 
 patience: 7
-dropout:
+dropout: 

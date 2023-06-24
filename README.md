@@ -70,7 +70,7 @@ pip install -r requirements.txt
 The datasets are organized as follows:
 ```
 data
-├── csv
+├── csv/version-02
 │   ├── roof_material.csv
 │   └── roof_type.csv
 ├── rasters
@@ -82,7 +82,7 @@ data
 │   │   └── ndsm_DOM.tif
 │   ├── ortho
 │   │   └── ortho_DOM.tif
-│   └── tiles
+│   └── tiles/version-02
 │     	├── ndsm
 │       │   ├── roof_material
 │       │   │   ├── BLUE_TARP
@@ -98,7 +98,7 @@ data
 │       └── ortho
 │           ├── roof_material
 │           └── roof_type
-└── vectors
+└── vectors/version-02
     ├── annotation_tiles_DOM.gpkg
     ├── building_footprints_DOM.gpkg
     ├── building_footprints_annotated_DOM.gpkg
