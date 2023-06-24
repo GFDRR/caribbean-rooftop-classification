@@ -1,0 +1,9 @@
+aoi: 'COLIHAUT'
+version: 'version-02'
+rasters_dir: './data/rasters/'
+vectors_dir: './data/vectors/'
+csv_dir: './data/csv/'
+attributes: ['roof_type', 'roof_material']
+
+bldgs_file: 'building_footprints_annotated_COLIHAUT.gpkg'
+rgb_source_file: 'drone/drone_colihaut_DOM.tif'

@@ -1,5 +1,6 @@
-data_dir: './data/rasters/Tiles/ortho/'
+data_dir: './data/rasters/tiles/'
 csv_dir: './data/csv/'
+version: 'version-01'
 attribute: 'roof_material'
 exp_name: 'exp-01'
 mode: 'RGB'

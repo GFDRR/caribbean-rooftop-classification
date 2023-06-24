@@ -1,13 +1,14 @@
-data_dir: './data/rasters/Tiles/ortho/'
+data_dir: './data/rasters/tiles/'
 csv_dir: './data/csv/'
-attribute: 'roof_material'
-exp_name: 'exp-09'
-mode: 'RGB'
+version: 'version-01'
+attribute: 'roof_type'
+mode: 'GRAYSCALE'
+exp_name: 'exp-05'
 batch_size: 32
 n_workers: 4
 n_epochs: 30
 
-model: "efficientnetb0"
+model: "resnet50"
 pretrained: True
 scheduler: "ReduceLROnPlateau"
 optimizer: "Adam"
@@ -17,4 +18,4 @@ momentum:
 gamma: 
 step_size: 
 patience: 7
-dropout:
+dropout: 0.5
