@@ -1,5 +1,5 @@
 aoi: 'COLIHAUT'
-version: 'version-02'
+version: 'version_02'
 rasters_dir: './data/rasters/'
 vectors_dir: './data/vectors/'
 csv_dir: './data/csv/'
