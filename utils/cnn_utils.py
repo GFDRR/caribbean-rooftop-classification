@@ -1,20 +1,23 @@
 import os
 import sys
+
+import matplotlib.pyplot as plt
+from PIL import Image
 from tqdm import tqdm
 import rasterio as rio
 import pandas as pd
 import numpy as np
-from PIL import Image
-import matplotlib.pyplot as plt
+
+import logging
+logging.basicConfig(level = logging.INFO)
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
-from torch.utils.data import Dataset, Subset
+from torch.utils.data import Dataset
 
-import torchvision
-from torchvision import datasets, models, transforms
+from torchvision import models, transforms
 import torchvision.transforms.functional as F
 from torchvision.models import (
     ResNet18_Weights,
@@ -24,10 +27,11 @@ from torchvision.models import (
     VGG16_Weights,
     EfficientNet_B0_Weights,
 )
-from sklearn.preprocessing import minmax_scale
 
 sys.path.insert(0, "./utils/")
 import eval_utils
+import geoutils
+import clf_utils
 
 SEED = 42
 
@@ -35,7 +39,7 @@ SEED = 42
 def get_imagenet_mean_std(mode):
     if mode == "RGB":
         return [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
-    elif mode == "GRAYSCALE":
+    elif mode == "LIDAR":
         # Source: https://stackoverflow.com/a/65717887
         return [
             0.44531356896770125,
@@ -45,7 +49,7 @@ def get_imagenet_mean_std(mode):
 def read_image(filename, mode):
     if mode == "RGB":
         image = Image.open(filename).convert("RGB")
-    elif mode == "GRAYSCALE":
+    elif mode == "LIDAR":
         src = rio.open(filename)
         image = src.read([1]).squeeze()
         image[image < 0] = 0
@@ -113,26 +117,39 @@ def visualize_data(data, data_loader, phase="test", mode="RGB", n=4):
                     np.array(imagenet_std) * image + np.array(imagenet_mean), 0, 1
                 )
                 axes[i, j].imshow(image)
-            elif mode == "GRAYSCALE":
+            elif mode == "LIDAR":
                 axes[i, j].imshow(image, cmap="viridis", norm="linear")
             axes[i, j].set_title(title, fontdict={"fontsize": 7})
             axes[i, j].axis("off")
 
 
-def load_dataset(config, phases):
-    csv_file = os.path.join(config["csv_dir"], f"{config['attribute']}.csv")
-    dataset = pd.read_csv(csv_file)
+def get_resampled_dataset(data, phase, config):
+    data = data[data.dataset == phase]
+    if phase == 'train':
+        resampler = clf_utils.get_resampler(config['resampler'])
+        data, _ = resampler.fit_resample(data, data['label'])
+    return data
+
+
+def load_dataset(config, phases):    
+    csv_file = f"{config['attribute']}.csv"
+    csv_path = os.path.join(config["csv_dir"], config["version"], csv_file)
+    dataset = pd.read_csv(csv_path)
+    
+    rgb_path, lidar_path = geoutils.get_image_dirs(config)
+    data_dir = rgb_path if config['mode'] == 'RGB' else lidar_path     
+    
     transforms = get_transforms(size=config["img_size"], mode=config["mode"])
     classes = list(dataset.label.unique())
     classes = {class_: index for index, class_ in enumerate(classes)}
-    print(classes)
+    logging.info(classes)
 
     data = {
         phase: CaribbeanDataset(
-            dataset[dataset.dataset == phase]
+            get_resampled_dataset(dataset, phase, config)
             .sample(frac=1, random_state=SEED)
             .reset_index(drop=True),
-            config["data_dir"],
+            data_dir,
             config["attribute"],
             classes,
             config["mode"],
@@ -259,7 +276,7 @@ def get_model(model_type, n_classes, mode, dropout=0):
         elif model_type == "resnet50":
             model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
 
-        if mode == "GRAYSCALE":
+        if mode == "LIDAR":
             # source: https://datascience.stackexchange.com/a/65784
             weights = model.conv1.weight
             model.conv1 = nn.Conv2d(
@@ -278,7 +295,7 @@ def get_model(model_type, n_classes, mode, dropout=0):
     if "inception" in model_type:
         if mode == "RGB":
             model = models.inception_v3(weights=Inception_V3_Weights.IMAGENET1K_V1)
-        elif mode == "GRAYSCALE":
+        elif mode == "LIDAR":
             model = models.inception_v3(
                 weights=Inception_V3_Weights.IMAGENET1K_V1, transform_input=False
             )
@@ -296,7 +313,7 @@ def get_model(model_type, n_classes, mode, dropout=0):
 
     if "vgg" in model_type:
         model = models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
-        if mode == "GRAYSCALE":
+        if mode == "LIDAR":
             weights = model.features[0].weight.clone()
             model.features[0] = nn.Conv2d(
                 1, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)
@@ -310,7 +327,7 @@ def get_model(model_type, n_classes, mode, dropout=0):
 
     if "efficientnet" in model_type:
         model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
-        if mode == "GRAYSCALE":
+        if mode == "LIDAR":
             weights = model.features[0][0].weight.clone()
             model.features[0][0] = nn.Conv2d(
                 1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False
@@ -330,6 +347,7 @@ def load_model(
     pretrained,
     scheduler_type,
     optimizer_type,
+    label_smoothing=0.0,
     mode="RGB",
     lr=0.001,
     momentum=0.9,
@@ -341,7 +359,7 @@ def load_model(
 ):
     model = get_model(model_type, n_classes, mode, dropout)
     model = model.to(device)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
 
     if optimizer_type == "SGD":
         optimizer = optim.SGD(model.parameters(), lr=lr, momentum=momentum)
@@ -363,7 +381,7 @@ def generate_train_test(
     column,
     out_dir,
     test_size,
-    test_iso=None,
+    test_aoi=None,
     stratified=True,
     verbose=True,
 ):
@@ -376,24 +394,26 @@ def generate_train_test(
         files = os.listdir(filepath)
 
         for file in files:
-            iso = file.split("_")[0]
-            data.append([iso, file, folder])
+            aoi = file.split("_")[0]
+            data.append([aoi, file, folder])
 
-    data = pd.DataFrame(data, columns=["iso", "filename", "label"])
+    data = pd.DataFrame(data, columns=["aoi", "filename", "label"])
     data["dataset"] = None
 
     total_size = len(data)
     test_size = int(total_size * test_size)
 
     test = data.copy()
-    if test_iso != None:
-        test = data[data.iso == test_iso]
+    if test_aoi != None:
+        test = data[data.aoi == test_aoi]
 
     if stratified:
         value_counts = data.label.value_counts().items()
         for label, count in value_counts:
             subtest = test[test.label == label]
             subtest_size = int(test_size * (count / total_size))
+            if subtest_size > len(subtest):
+                subtest_size = len(subtest)
             subtest_files = subtest.sample(
                 subtest_size, random_state=SEED
             ).filename.values
@@ -406,7 +426,7 @@ def generate_train_test(
             axis=1,
             keys=["counts", "percentage"],
         )
-        print(value_counts)
+        logging.info(value_counts)
 
         subcounts = pd.DataFrame(
             data.groupby(["dataset", "label"]).size().reset_index()
@@ -416,7 +436,7 @@ def generate_train_test(
             subcounts[subcounts.dataset == "test"]["count"] / test_size
         )
         subcounts = subcounts.set_index(["dataset", "label"])
-        print(subcounts)
+        logging.info(subcounts)
 
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
