@@ -1,25 +1,30 @@
 import os
 import sys
-import random
-import subprocess
-import numpy as np
-import rasterio as rio
-from PIL import Image
 
-import matplotlib.pyplot as plt
-from rasterio.plot import show
 from tqdm import tqdm
+import pandas as pd
+import geopandas as gpd
+import numpy as np
 
 import torch
-import torch.nn as nn
-from torchvision import datasets, models, transforms
-from torchvision.models import ResNet18_Weights, ResNet34_Weights, ResNet50_Weights
-
-import subprocess
+import torch.nn.functional as nn
 
 sys.path.insert(0, "./utils/")
 import cnn_utils
 import geoutils
+import config
+
+import logging
+logging.basicConfig(level = logging.INFO)
+
+def predict(bldgs, in_file, exp_config, prefix=''):
+    c = config.create_config(exp_config, prefix=prefix)
+    exp_dir = os.path.join(c['exp_dir'], c['version'], c['exp_name'])
+    classes = geoutils.get_classes_dict(c['attribute'])
+    logging.info(f"Config: {c}")
+
+    model = load_model(c, exp_dir, n_classes=len(classes))
+    return generate_predictions(bldgs, model, c, in_file, exp_dir, classes=classes)   
 
 
 def load_model(c, exp_dir, n_classes):
@@ -29,12 +34,12 @@ def load_model(c, exp_dir, n_classes):
     model.load_state_dict(torch.load(model_file, map_location=device))
     model = model.to(device)
     model.eval()
-    print("Model file {} successfully loaded.".format(model_file))
+    logging.info("Model file {} successfully loaded.".format(model_file))
     return model
 
 
 def generate_predictions(data, model, c, in_file, out_dir, classes, scale=1.5):
-    preds = []
+    preds, probs = [], []
     pbar = tqdm(
         enumerate(data.iterrows()),
         total=len(data),
@@ -52,11 +57,15 @@ def generate_predictions(data, model, c, in_file, out_dir, classes, scale=1.5):
             image = cnn_utils.read_image(out_file, c["mode"])
             transforms = cnn_utils.get_transforms(c["img_size"], c["mode"])
             output = model(transforms["test"](image).unsqueeze(0))
+            probs.append(nn.softmax(output, dim=1).detach().numpy()[0])
             _, pred = torch.max(output, 1)
             label = str(classes[int(pred[0])])
             preds.append(label)
         else:
+            probs.append([np.nan] * len(classes))
             preds.append(np.nan)
-
+    
+    probs_col = [f"{class_}_PROB" for class_ in classes] 
+    probs = pd.DataFrame(probs, columns=probs_col)
     data[c["attribute"]] = preds
-    return data
+    return gpd.GeoDataFrame(pd.concat([data, probs], axis=1))
