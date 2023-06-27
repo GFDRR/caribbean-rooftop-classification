@@ -2,7 +2,6 @@
 Authors: Wouter Van Gansbeke, Simon Vandenhende
 Licensed under the CC BY-NC 4.0 license (https://creativecommons.org/licenses/by-nc/4.0/)
 """
-import os
 import yaml
 from easydict import EasyDict
 
@@ -26,7 +25,7 @@ def create_config(config_file_exp, prefix=None):
         cfg[k] = v
     if prefix is not None:
         for key in cfg:
-            if "path" in key:
+            if "dir" in key:
                 cfg[key] = prefix + cfg[key]
 
     return cfg
