@@ -1,9 +1,4 @@
-from tqdm import tqdm
 import collections
-import itertools
-import random
-import copy
-
 import numpy as np
 
 from sklearn.preprocessing import (
@@ -14,10 +9,12 @@ from sklearn.preprocessing import (
 )
 
 from sklearn.pipeline import Pipeline
-from sklearn.model_selection import KFold
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from utils import clf_utils
 from utils import eval_utils
+
+import logging
+logging.basicConfig(level = logging.INFO)
 
 SEED = 42
 
@@ -146,13 +143,13 @@ def get_cv(c):
 
 
 def model_trainer(c, data, features, target):
-    print("Features: {}, Target: {}".format(features, target))
+    logging.info("Features: {}, Target: {}".format(features, target))
 
     X = data[features]
     y = data[target].values
 
     cv = get_cv(c)
     cv.fit(X, y)
-
-    print("Best estimator: {}".format(cv.best_estimator_))
+    
+    logging.info("Best estimator: {}".format(cv.best_estimator_))
     return cv

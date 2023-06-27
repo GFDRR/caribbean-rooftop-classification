@@ -3,21 +3,30 @@ import random
 import subprocess
 import rasterio as rio
 
+import geopandas as gpd
+import pandas as pd
+
 import matplotlib.pyplot as plt
 from rasterio.plot import show
 from tqdm import tqdm
 
+import logging
+logging.basicConfig(level = logging.INFO)
+pd.set_option('mode.chained_assignment', None)
 
-classes_dict = {
-    "roof_material": [
-        "BLUE_TARP",
-        "CONCRETE_CEMENT",
-        "HEALTHY_METAL",
-        "INCOMPLETE",
-        "IRREGULAR_METAL",
-    ],
-    "roof_type": ["FLAT", "GABLE", "HIP", "NO_ROOF"],
-}
+
+def get_classes_dict(attribute):
+    classes_dict = {
+        "roof_material": [
+            "BLUE_TARP",
+            "CONCRETE_CEMENT",
+            "HEALTHY_METAL",
+            "INCOMPLETE",
+            "IRREGULAR_METAL",
+        ],
+        "roof_type": ["FLAT", "GABLE", "HIP", "NO_ROOF"],
+    }
+    return classes_dict[attribute]
 
 
 def remove_ticks(ax):
@@ -35,13 +44,39 @@ def read_image(filepath, n_channels=3):
     return image
 
 
+def get_annotated_bldgs(config):
+    bldgs_path = os.path.join(config["vectors_dir"], config["version"], config["bldgs_file"])
+    bldgs = gpd.read_file(bldgs_path)
+
+    if "roof_type" in bldgs.columns and "roof_material" in bldgs.columns:
+        bldgs = bldgs[(bldgs.roof_type != "OTHER") & (bldgs.roof_material != "OTHER")]
+        bldgs.roof_type = bldgs.roof_type.replace({"PYRAMID": "HIP", "HALF_HIP": "HIP"})
+        logging.info(f"Dimensions: {bldgs.shape}")
+
+        bldgs_shape = bldgs[
+            (~bldgs.roof_type.isna()) | (~bldgs.roof_material.isna())
+        ].shape
+        logging.info(f"Dimensions (non-null): {bldgs_shape}")
+        logging.info(bldgs.roof_material.value_counts())
+        logging.info(bldgs.roof_type.value_counts())
+
+    return bldgs
+
+
+def get_image_dirs(config):
+    data_dir = os.path.join(config["rasters_dir"], "tiles", config["version"])
+    rgb_path = os.path.join(data_dir, 'RGB')
+    lidar_path = os.path.join(data_dir, "LIDAR")
+    return rgb_path, lidar_path
+
+
 def inspect_image_crops(
     data,
     column,
     value,
     rgb_path,
-    ndsm_path,
-    iso,
+    lidar_path,
+    aoi,
     index=0,
     n_rows=5,
     n_cols=5,
@@ -53,26 +88,29 @@ def inspect_image_crops(
     row_index, col_index = 0, 0
 
     for _, item in samples:
-        filename = f"{iso}_{item.UID}.tif"
-        ndsm_filepath = os.path.join(ndsm_path, column, value, filename)
-        ndsm_image = read_image(ndsm_filepath, n_channels=1)
-
+        filename = f"{aoi}_{item.UID}.tif"
+        lidar_filepath = os.path.join(lidar_path, column, value, filename)
         rgb_filepath = os.path.join(rgb_path, column, value, filename)
-        rgb_image = read_image(rgb_filepath, n_channels=3)
 
-        show(rgb_image, ax=axes[row_index, col_index])
-        show(ndsm_image, ax=axes[row_index + 1, col_index])
+        if os.path.isfile(lidar_filepath) and os.path.isfile(rgb_filepath):
+            lidar_image = read_image(lidar_filepath, n_channels=1)
+            rgb_image = read_image(rgb_filepath, n_channels=3)
 
-        remove_ticks(axes[row_index, col_index])
-        remove_ticks(axes[row_index + 1, col_index])
+            show(rgb_image, ax=axes[row_index, col_index])
+            show(lidar_image, ax=axes[row_index + 1, col_index])
 
-        axes[row_index, col_index].set_title(int(item.UID), fontdict={"fontsize": 9})
+            remove_ticks(axes[row_index, col_index])
+            remove_ticks(axes[row_index + 1, col_index])
 
-        col_index += 1
+            axes[row_index, col_index].set_title(
+                int(item.UID), fontdict={"fontsize": 9}
+            )
 
-        if col_index >= n_cols:
-            row_index += 2
-            col_index = 0
+            col_index += 1
+
+            if col_index >= n_cols:
+                row_index += 2
+                col_index = 0
 
 
 def visualize_image_crops(
@@ -106,13 +144,14 @@ def crop_shape(shape, filename, scale, in_file, out_file):
     shape.geometry = shape.geometry.scale(scale, scale)
     shape.to_file(filename, driver="GPKG")
     subprocess.call(
-        f"gdalwarp -cutline {filename} -crop_to_cutline -dstalpha {in_file} {out_file}",
+        f"gdalwarp -q -cutline {filename} -crop_to_cutline -dstalpha {in_file} {out_file}",
         shell=True,
     )
 
 
-def generate_image_crops(data, column, in_file, out_dir, iso, scale=1.5, clip=False):
-    print(f"{column} size: {data[~data[column].isna()].shape}")
+def generate_image_crops(data, column, in_file, out_dir, aoi, scale=1.5, clip=False):
+    logging.info(f"{column} size: {data[~data[column].isna()].shape}")
+    
     data = data[(~data[column].isna())]
     for attr in data[column].unique():
         out_path = os.path.join(out_dir, attr)
@@ -127,7 +166,7 @@ def generate_image_crops(data, column, in_file, out_dir, iso, scale=1.5, clip=Fa
         )
         for index, (_, row) in pbar:
             uid = row["UID"]
-            out_file = os.path.join(out_path, f"{iso}_{uid}.tif")
+            out_file = os.path.join(out_path, f"{aoi}_{uid}.tif")
             shape = data[(data.UID == uid)]
             filename = "temp.gpkg"
             crop_shape(shape, filename, scale, in_file, out_file)

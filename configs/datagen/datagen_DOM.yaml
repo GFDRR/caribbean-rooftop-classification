@@ -1,5 +1,5 @@
 aoi: 'DOM'
-version: 'version-02'
+version: 'version_02'
 rasters_dir: './data/rasters/'
 vectors_dir: './data/vectors/'
 csv_dir: './data/csv/'
@@ -7,4 +7,4 @@ attributes: ['roof_type', 'roof_material']
 
 bldgs_file: 'building_footprints_annotated_DOM.gpkg'
 rgb_source_file: 'ortho/ortho_DOM.tif'
-ndsm_source_file: 'lidar/ndsm_DOM.tif'
+lidar_source_file: 'lidar/ndsm_DOM.tif'

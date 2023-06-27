@@ -1,8 +1,10 @@
-data_dir: './data/rasters/tiles/'
+rasters_dir: './data/rasters/'
 csv_dir: './data/csv/'
-version: 'version-01'
+exp_dir: './exp/'
+
+version: 'version_02'
 attribute: 'roof_material'
-exp_name: 'exp-01'
+exp_name: 'exp_01'
 mode: 'RGB'
 batch_size: 32
 n_workers: 4
@@ -12,10 +14,11 @@ model: "resnet50"
 pretrained: True
 scheduler: "ReduceLROnPlateau"
 optimizer: "Adam"
+label_smoothing: 0.1
 lr: 0.00001
 img_size: 224
+patience: 7
+dropout: 0.5
 momentum: 
 gamma: 
 step_size: 
-patience: 7
-dropout: 0.5
