@@ -22,7 +22,7 @@ def save_results(results, cm, exp_dir):
         json.dump(results, f)
     cm[0].to_csv(os.path.join(exp_dir, "confusion_matrix.csv"))
     cm[1].to_csv(os.path.join(exp_dir, "cm_metrics.csv"))
-    file = open(os.path.join(exp_dir, "cm_report.log"), "a").write(cm[2])
+    open(os.path.join(exp_dir, "cm_report.log"), "a").write(cm[2])
 
 
 def get_confusion_matrix(y_true, y_pred, class_names):
@@ -77,8 +77,6 @@ def _get_cm_metrics(cm, class_names):
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-        omission_error = fn / (fn + tp) if (fn + tp) > 0 else 0
-        commission_error = fp / (fp + tp) if (fp + tp) > 0 else 0
         f1 = 2 / (recall**-1 + precision**-1) if precision + recall > 0 else 0
 
         scores = {
