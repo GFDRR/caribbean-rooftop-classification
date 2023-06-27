@@ -125,7 +125,7 @@ def visualize_data(data, data_loader, phase="test", mode="RGB", n=4):
 
 def get_resampled_dataset(data, phase, config):
     data = data[data.dataset == phase]
-    if phase == 'train':
+    if phase == 'train' and config['resampler'] != None:
         resampler = clf_utils.get_resampler(config['resampler'])
         data, _ = resampler.fit_resample(data, data['label'])
     return data
