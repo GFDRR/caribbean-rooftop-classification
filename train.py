@@ -1,13 +1,8 @@
 import os
 import sys
 import time
-import random
 import argparse
 from collections import Counter
-
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
 import torch
 
 sys.path.insert(0, "./utils/")
@@ -16,29 +11,38 @@ import cnn_utils
 import eval_utils
 import wandb
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 # Get device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def main(c):
+    # Create experiment folder
     exp_name = c["exp_name"]
-    exp_dir = f"./exp/{exp_name}/"
+    exp_dir = os.path.join(c["exp_dir"], c["version"], c["exp_name"])
     if not os.path.exists(exp_dir):
         os.makedirs(exp_dir)
 
-    wandb.init(project="GFDRR")
-    wandb.run.name = exp_name
+    # Set wandb configs
+    wandb.init(project="GFDRR", config=c)
+    run_name = "-".join([c["exp_name"], c["attribute"], c["mode"], c["model"]])
+    wandb.run.name = run_name
+    wandb.run.tags = [c['version']]
     wandb.config = c
-    print(c)
+    logging.info(c)
 
     # Load dataset
     phases = ["train", "test"]
     data, data_loader, classes = cnn_utils.load_dataset(config=c, phases=phases)
-    print("Train/test sizes: {}/{}".format(len(data["train"]), len(data["test"])))
+    logging.info(
+        "Train/test sizes: {}/{}".format(len(data["train"]), len(data["test"]))
+    )
     for phase in phases:
-        print(f"{phase.title()} distribution")
+        logging.info(f"{phase.title()} distribution")
         n_classes = [label for _, label in data[phase]]
-        print(Counter(n_classes))
+        logging.info(Counter(n_classes))
 
     # Load model, optimizer, and scheduler
     model, criterion, optimizer, scheduler = cnn_utils.load_model(
@@ -47,6 +51,7 @@ def main(c):
         pretrained=c["pretrained"],
         scheduler_type=c["scheduler"],
         optimizer_type=c["optimizer"],
+        label_smoothing=c["label_smoothing"],
         lr=c["lr"],
         momentum=c["momentum"],
         gamma=c["gamma"],
@@ -56,7 +61,7 @@ def main(c):
         mode=c["mode"],
         device=device,
     )
-    print(model)
+    logging.info(model)
 
     # Instantiate wandb tracker
     wandb.watch(model)
@@ -71,7 +76,7 @@ def main(c):
         print("-" * 10)
 
         # Train model
-        train_results = cnn_utils.train(
+        cnn_utils.train(
             data_loader["train"],
             model,
             criterion,
@@ -89,11 +94,11 @@ def main(c):
         if val_results["f1_score"] > best_score:
             best_score = val_results["f1_score"]
             best_weights = model.state_dict()
-            model.load_state_dict(best_weights)
 
             eval_utils.save_results(val_results, val_cm, exp_dir)
             model_file = os.path.join(exp_dir, "best_model.pth")
             torch.save(model.state_dict(), model_file)
+        logging.info(f"Best F1 score: {best_score}")
 
         # Terminate if learning rate becomes too low
         learning_rate = optimizer.param_groups[0]["lr"]
@@ -102,17 +107,19 @@ def main(c):
 
     # Terminate trackers
     time_elapsed = time.time() - since
-    print(
+    logging.info(
         "Training complete in {:.0f}m {:.0f}s".format(
             time_elapsed // 60, time_elapsed % 60
         )
     )
 
     # Load best model
-    model.load_state_dict(best_weights)
+    model_file = os.path.join(exp_dir, "best_model.pth")
+    model.load_state_dict(torch.load(model_file, map_location=device))
+    model = model.to(device)
 
     # Calculate test performance using best model
-    print("\nTest Results")
+    logging.info("\nTest Results")
     test_results, test_cm = cnn_utils.evaluate(
         data_loader["test"], classes, model, criterion, device, wandb=wandb
     )
@@ -120,14 +127,10 @@ def main(c):
     # Save results in experiment directory
     eval_utils.save_results(test_results, test_cm, exp_dir)
 
-    # Save best mode
-    model_file = os.path.join(exp_dir, "best_model.pth")
-    torch.save(model.state_dict(), model_file)
-
 
 if __name__ == "__main__":
     # Parser
-    parser = argparse.ArgumentParser(description="Example Description")
+    parser = argparse.ArgumentParser(description="Model Training")
     parser.add_argument("--exp_config", help="Config file")
     args = parser.parse_args()
 
