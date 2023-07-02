@@ -200,7 +200,7 @@ def get_image_arrays(image_file):
         crs = src.crs  # Save the Coordinate Reference System
 
     image_pil = Image.fromarray(image_np[:, :, :3])
-    return image_np, image_pil, transform
+    return image_np, image_pil, transform, crs
 
     
 def visualize(image_np, image_pil, boxes, masks):
@@ -239,7 +239,7 @@ def visualize(image_np, image_pil, boxes, masks):
     return mask_overlay
    
     
-def save_predictions(filename, mask_overlay, transform):
+def save_predictions(filename, mask_overlay, transform, crs):
     # Save the individual segmentations into a multi-part ShapeFile
     mask = mask_overlay.astype('int16')  # Convert the mask to integer type
     results = (
