@@ -193,23 +193,17 @@ def transform_image(image: Image) -> torch.Tensor:
     image_transformed, _ = transform(image, None)
     return image_transformed
 
-def predict(model, image_file, box_threshold=0.3, text_threshold=0.3):
-    # Load the georeferenced image
+def get_image_arrays(image_file):
     with rasterio.open(image_file) as src:
         image_np = src.read().transpose((1, 2, 0))  # Convert rasterio image to numpy array
         transform = src.transform  # Save georeferencing information
         crs = src.crs  # Save the Coordinate Reference System
 
     image_pil = Image.fromarray(image_np[:, :, :3])
+    return image_np, image_pil
 
-    return model.predict(
-        image_pil, 
-        text_prompt, 
-        box_threshold=box_threshold, 
-        text_threshold=text_threshold
-    )
     
-def visualize(image, boxes, masks):
+def visualize(image_np, image_pil, boxes, masks):
     mask_overlay = np.zeros_like(image_np[..., 0], dtype=np.uint8)  # Adjusted for single channel
 
     for i, (box, mask) in enumerate(zip(boxes, masks)):
@@ -223,7 +217,7 @@ def visualize(image, boxes, masks):
 
     # Display the original image with all mask overlays and bounding boxes
     plt.figure(figsize=(10, 10))
-    plt.imshow(image)
+    plt.imshow(image_pil)
 
     for box in boxes:
         # Draw bounding box
@@ -241,3 +235,19 @@ def visualize(image, boxes, masks):
     plt.imshow(mask_overlay, cmap='viridis', alpha=0.4)  # Overlay the mask with some transparency
     plt.title(f"Segmented")
     plt.show()
+    
+def save_predictions(mask_overlay, filename):
+    # Save the individual segmentations into a multi-part ShapeFile
+    mask = mask_overlay.astype('int16')  # Convert the mask to integer type
+    results = (
+        {'properties': {'raster_val': v}, 'geometry': s}
+        for i, (s, v) in enumerate(shapes(mask, transform=transform))
+        if v == 255  # Add condition to only keep 'trees'
+    )
+
+    geoms = list(results)
+    gdf = gpd.GeoDataFrame.from_features(geoms)
+    gdf.crs = crs  # Assign the Coordinate Reference System of the original image
+
+    # Save to file
+    gdf.to_file(filename, driver='GPKG')
