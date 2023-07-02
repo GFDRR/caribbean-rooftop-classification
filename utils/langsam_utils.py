@@ -193,7 +193,7 @@ def transform_image(image: Image) -> torch.Tensor:
     image_transformed, _ = transform(image, None)
     return image_transformed
 
-def predict(model, image_file, box_threshold-0.3, text_threshold=0.3):
+def predict(model, image_file, box_threshold=0.3, text_threshold=0.3):
     # Load the georeferenced image
     with rasterio.open(image_file) as src:
         image_np = src.read().transpose((1, 2, 0))  # Convert rasterio image to numpy array
