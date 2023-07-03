@@ -204,29 +204,20 @@ def model_predict(
     out_file=None,
     visualize=True
 ):
-    print(f"Reading {image_file}...")
+    #print(f"Reading {image_file}...")
     with rasterio.open(image_file) as src:
         image_np = src.read().transpose((1, 2, 0))  # Convert rasterio image to numpy array
         transform = src.transform  # Save georeferencing information
         crs = src.crs  # Save the Coordinate Reference System
     image_pil = Image.fromarray(image_np[:, :, :3])
     
-    print("Generating predictions...")
+    #print("Generating predictions...")
     masks, boxes, phrases, logit = model.predict(
         image_pil, text_prompt, box_threshold=0.3, text_threshold=0.3
     )
+    
+    # Generate mask overlay
     mask_overlay = np.zeros_like(image_np[..., 0], dtype=np.uint8)  
-    
-    if out_file:
-        print(f"Saving predictions to {out_file}...")
-        save_predictions(out_file, mask_overlay, transform, crs)
-    
-    if visualize:
-        print("Preparing visualization...")
-        visualize(image_pil, boxes, masks, mask_overlay)
-
-    
-def visualize(image_pil, boxes, masks, mask_overlay):
     for i, (box, mask) in enumerate(zip(boxes, masks)):
         # Convert tensor to numpy array if necessary and ensure it contains integers
         if isinstance(mask, torch.Tensor):
@@ -235,8 +226,17 @@ def visualize(image_pil, boxes, masks, mask_overlay):
 
     # Normalize mask_overlay to be in [0, 255]
     mask_overlay = (mask_overlay > 0) * 255  # Binary mask in [0, 255]
+    
+    if out_file:
+        #print(f"Saving predictions to {out_file}...")
+        save_predictions(out_file, mask_overlay, transform, crs)
+    
+    if visualize:
+        #print("Preparing visualization...")
+        visualize_predictions(image_pil, boxes, mask_overlay)
 
-    # Display the original image with all mask overlays and bounding boxes
+    
+def visualize_predictions(image_pil, boxes, mask_overlay):
     plt.figure(figsize=(10, 10))
     plt.imshow(image_pil)
 
