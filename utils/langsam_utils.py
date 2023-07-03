@@ -175,6 +175,26 @@ def load_model_hf(repo_id: str, filename: str, ckpt_config_filename: str, device
 
     return model
 
+def model_predict(
+    image_file, 
+    model, 
+    text_prompt, 
+    box_threshold=0.3, 
+    text_threshold=0.3, 
+    visualize=True,
+    out_file=None
+):
+    image_np, image_pil, transform, crs = get_image_arrays(image_file)
+    masks, boxes, phrases, logit = model.predict(
+        image_file, text_prompt, box_threshold=0.3, text_threshold=0.3
+    )
+    mask_overlay = np.zeros_like(image_np[..., 0], dtype=np.uint8)  
+    
+    if visualize:
+        langsam_utils.visualize(image_pil, mask_overlay, boxes, masks)
+    if out_file:
+        save_predictions(out_file, mask_overlay, transform, crs)
+
 def transform_image(image: Image) -> torch.Tensor:
     """
     Transforms an image using standard transformations for image-based models.
@@ -203,9 +223,7 @@ def get_image_arrays(image_file):
     return image_np, image_pil, transform, crs
 
     
-def visualize(image_np, image_pil, boxes, masks):
-    mask_overlay = np.zeros_like(image_np[..., 0], dtype=np.uint8)  # Adjusted for single channel
-
+def visualize(image_pil, mask_overlay, boxes, masks):
     for i, (box, mask) in enumerate(zip(boxes, masks)):
         # Convert tensor to numpy array if necessary and ensure it contains integers
         if isinstance(mask, torch.Tensor):
