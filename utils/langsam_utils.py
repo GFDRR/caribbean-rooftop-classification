@@ -242,6 +242,8 @@ def model_predict(
     if visualize:
         #print("Preparing visualization...")
         visualize_predictions(image_pil, boxes, mask_overlay)
+        
+    torch.cuda.empty_cache()
 
     
 def visualize_predictions(image_pil, boxes, mask_overlay):
@@ -300,7 +302,7 @@ def generate_tiles(image_file, size=3000):
     """
 
     # Open the raster image using rio
-    with rio.open(image) as raster:
+    with rio.open(image_tile) as raster:
         width, height = raster.shape
 
     # Create a dictionary which will contain our 64 x 64 px polygon tiles
