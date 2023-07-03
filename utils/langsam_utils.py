@@ -8,6 +8,7 @@ import matplotlib.patches as patches
 import groundingdino.datasets.transforms as T
 
 from PIL import Image
+import rasterio.mask
 from rasterio.plot import show
 from matplotlib.patches import Rectangle
 
@@ -22,6 +23,11 @@ from segment_anything import sam_model_registry
 from segment_anything import SamPredictor
 from shapely.geometry import shape
 from rasterio.features import shapes
+
+from tqdm.notebook import tqdm
+import pandas as pd
+import numpy as np
+
 
 # Define constants
 SAM_MODELS = {
@@ -270,8 +276,183 @@ def save_predictions(filename, mask_overlay, transform, crs):
     )
 
     geoms = list(results)
-    gdf = gpd.GeoDataFrame.from_features(geoms)
-    gdf.crs = crs  # Assign the Coordinate Reference System of the original image
+    if len(geoms) > 0:
+        gdf = gpd.GeoDataFrame.from_features(geoms)
+        gdf.crs = crs  # Assign the Coordinate Reference System of the original image
 
-    # Save to file
-    gdf.to_file(filename, driver='GPKG')
+        # Save to file
+        gdf.to_file(filename, driver='GPKG')
+        
+
+def generate_tiles(image_file, size=3000):
+    """Generates n x n polygon tiles.
+
+    Args:
+      image_file (str): Image file path (.tif)
+      output_file (str): Output file path (.geojson)
+      area_str (str): Name of the region
+      size(int): Window size
+
+    Returns:
+      GeoPandas DataFrame: Contains 64 x 64 polygon tiles
+    """
+
+    # Open the raster image using rasterio
+    raster = rio.open(image_file)
+    width, height = raster.shape
+
+    # Create a dictionary which will contain our 64 x 64 px polygon tiles
+    # Later we'll convert this dict into a GeoPandas DataFrame.
+    geo_dict = { 'geometry' : []}
+    index = 0
+
+    # Do a sliding window across the raster image
+    with tqdm(total=width*height) as pbar:
+        for w in range(0, width, int(size/2)):
+            for h in range(0, height, int(size/2)):
+                # Create a Window of your desired size
+                window = rio.windows.Window(h, w, size, size)
+                # Get the georeferenced window bounds
+                bbox = rio.windows.bounds(window, raster.transform)
+                # Create a shapely geometry from the bounding box
+                bbox = box(*bbox)
+
+                # Update dictionary
+                #geo_dict['id'].append(uid)
+                geo_dict['geometry'].append(bbox)
+
+                index += 1
+                pbar.update(size*size)
+
+    # Cast dictionary as a GeoPandas DataFrame
+    results = gpd.GeoDataFrame(pd.DataFrame(geo_dict))
+    # Set CRS to EPSG:4326
+    results.crs = {'init' :'epsg:4326'}
+
+    raster.close()
+    return results
+
+
+def show_crop(image, shape, title=''):
+    """Crops an image based on the polygon shape.
+    Reference: https://rasterio.readthedocs.io/en/latest/api/rasterio.mask.html#rasterio.mask.mask
+
+    Args:
+        image (str): Image file path (.tif)
+        shape (geometry): The tile with which to crop the image
+        title(str): Image title
+    """
+
+    with rio.open(image) as src:
+        out_image, out_transform = rio.mask.mask(src, shape, crop=True)
+        show(out_image, title=title)
+        
+        
+def predict_crop(image, shape, model, out_dir, uid):
+    """Generates model prediction using trained model
+
+    Args:
+      image (str): Image file path (.tiff)
+      shape (geometry): The tile with which to crop the image
+      classes (list): List of LULC classes
+
+    Return
+      str: Predicted label
+    """
+
+    with rio.open(image) as src:
+        # Crop source image using polygon shape
+        # See more information here:
+        # https://rasterio.readthedocs.io/en/latest/api/rasterio.mask.html#rasterio.mask.mask
+        out_image, out_transform = rio.mask.mask(src, shape, crop=True)
+
+        if np.mean(out_image) == 255:
+            return
+
+        # Get the metadata of the source image and update it
+        # with the width, height, and transform of the cropped image
+        out_meta = src.meta
+        out_meta.update({
+              "driver": "GTiff",
+              "height": out_image.shape[1],
+              "width": out_image.shape[2],
+              "transform": out_transform
+        })
+
+        # Save the cropped image as a temporary TIFF file.
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        temp_tif = os.path.join(out_dir, f"{uid}.tif")
+
+        with rasterio.open(temp_tif, "w", **out_meta) as dest:
+            dest.write(out_image)
+
+        # Open the cropped image and generated prediction
+        # using the trained Pytorch model
+        out_file = os.path.join(out_dir, f"{uid}.gpkg")
+
+        langsam_utils.model_predict(
+          temp_tif,
+          model,
+          text_prompt,
+          box_threshold=0.3,
+          text_threshold=0.3,
+          out_file=out_file,
+          visualize=False
+        )
+       
+    
+def merge_polygons(gpkg_dir):
+    files = filenames = next(os.walk(gpkg_dir), (None, None, []))[2] 
+
+    polygons = []
+    for file in files:
+        if file.split('.')[-1] == '.gpkg':
+            filepath = os.path.join(gpkg_dir, file)
+            polygons.append(gpd.read_file(filepath))
+
+    polygons = pd.concat(polygons)
+    polygons = gpd.GeoDataFrame(polygons, crs="EPSG:32620")[['geometry']]
+    polygons = polygons.to_crs("EPSG:4326")
+    return polygons
+        
+
+def get_connected_components(polygons):
+    graph = nx.from_pandas_edgelist(polygons, "index_1", "index_2", ["%_intersect"])
+    l = list(nx.connected_components(graph))
+    L = [dict.fromkeys(y, x) for x, y in enumerate(l)]
+    d = {k: v for d in L for k, v in d.items()}
+    return d
+    
+    
+def connect_polygons(polygons, connected_file, intersect_ratio=0.6):
+    polygons['uid'] = polygons.index
+    polygons["area"] = polygons["geometry"].area
+    overlay = gpd.overlay(polygons, polygons, how="intersection")
+    overlay["intersect_area"] = overlay["geometry"].area
+
+    connected = overlay.merge(
+        polygons[["uid", "area"]], left_on="uid_1", right_on="uid"
+    )
+    connected = connected.merge(
+        polygons[["uid", "area"]],
+        left_on="uid_2",
+        right_on="uid",
+        suffixes=["_1", "_2"],
+    )
+
+    connected = connected.loc[:, ~connected.columns.duplicated()]
+    connected["min_area"] = connected[["area_1", "area_2"]].min(axis=1)
+    connected["%_intersect"] = connected["intersect_area"] / (connected["min_area"])
+
+    connected = connected[connected["%_intersect"] > intersect_ratio]
+    group = get_connected_components(polygons)
+    polygons["group"] = polygons.uid.map(group)
+    polygons.crs = {"init": "EPSG:4326"}
+
+    polygons = polygons.dissolve(by="group", aggfunc="mean")
+    polygons = gpd.GeoDataFrame(polygons[["geometry"]])
+    polygons = polygons.explode()
+    polygons.to_file(connected_file, driver="GeoJSON")
+
+    return polygons
