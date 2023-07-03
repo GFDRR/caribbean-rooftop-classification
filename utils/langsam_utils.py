@@ -300,8 +300,8 @@ def generate_tiles(image_file, size=3000):
     """
 
     # Open the raster image using rio
-    raster = rio.open(image_file)
-    width, height = raster.shape
+    with rio.open(image) as raster:
+        width, height = raster.shape
 
     # Create a dictionary which will contain our 64 x 64 px polygon tiles
     # Later we'll convert this dict into a GeoPandas DataFrame.
@@ -330,8 +330,6 @@ def generate_tiles(image_file, size=3000):
     results = gpd.GeoDataFrame(pd.DataFrame(geo_dict))
     # Set CRS to EPSG:4326
     results.crs = {'init' :'epsg:4326'}
-
-    raster.close()
     return results
 
 
@@ -404,7 +402,7 @@ def predict_crop(image, text_prompt, shape, model, out_dir, uid):
         )
        
     
-def merge_polygons(gpkg_dir):
+def merge_polygons(gpkg_dir, crs="EPSG:4326"):
     files = filenames = next(os.walk(gpkg_dir), (None, None, []))[2] 
 
     polygons = []
@@ -415,8 +413,9 @@ def merge_polygons(gpkg_dir):
 
     polygons = pd.concat(polygons)
     polygons = gpd.GeoDataFrame(polygons)[['geometry']]
-    polygons = polygons.set_crs("EPSG:32620", allow_override=True)
-    polygons = polygons.to_crs("EPSG:4326")
+    polygons = polygons.set_crs(crs, allow_override=True)
+    if crs != "EPSG:4326":
+        polygons = polygons.to_crs("EPSG:4326")
     return polygons
         
 
@@ -458,4 +457,28 @@ def connect_polygons(polygons, out_file, intersect_ratio=0.6):
     polygons = polygons.explode()
     polygons.to_file(out_file, driver="GeoJSON")
 
+    return polygons
+
+def predict_image(
+    image_file, 
+    text_prompt, 
+    tiles, 
+    model, 
+    out_dir, 
+    out_file, 
+    intersect_ratio=0.6
+):
+    with rio.open(image_file) as src:
+        crs = src.crs  
+    
+    for index in tqdm(range(len(tiles)), total=len(tiles)):
+        shape = [tiles.iloc[index]['geometry']]
+        predict_crop(image_file, text_prompt, shape, model, out_dir, index)
+
+    polygons = merge_polygons(out_dir, crs=crs)
+    polygons = connect_polygons(
+        polygons, 
+        out_file=out_file, 
+        intersect_ratio=intersect_ratio
+    )
     return polygons
