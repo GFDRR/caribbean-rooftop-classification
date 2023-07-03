@@ -28,7 +28,6 @@ from rasterio.features import shapes
 from tqdm.notebook import tqdm
 import pandas as pd
 import numpy as np
-import networkx as nx
 import itertools
 
 
@@ -420,47 +419,7 @@ def merge_polygons(gpkg_dir, crs="EPSG:4326"):
     if crs != "EPSG:4326":
         polygons = polygons.to_crs("EPSG:4326")
     return polygons
-        
 
-def get_connected_components(polygons):
-    graph = nx.from_pandas_edgelist(polygons, "uid_1", "uid_2", ["%_intersect"])
-    l = list(nx.connected_components(graph))
-    L = [dict.fromkeys(y, x) for x, y in enumerate(l)]
-    d = {k: v for d in L for k, v in d.items()}
-    return d
-    
-    
-def connect_polygons(polygons, out_file, intersect_ratio=0.6):
-    polygons['uid'] = polygons.index
-    polygons["area"] = polygons["geometry"].area
-    overlay = gpd.overlay(polygons, polygons, how="intersection")
-    overlay["intersect_area"] = overlay["geometry"].area
-
-    connected = overlay.merge(
-        polygons[["uid", "area"]], left_on="uid_1", right_on="uid"
-    )
-    connected = connected.merge(
-        polygons[["uid", "area"]],
-        left_on="uid_2",
-        right_on="uid",
-        suffixes=["_1", "_2"],
-    )
-
-    connected = connected.loc[:, ~connected.columns.duplicated()]
-    connected["min_area"] = connected[["area_1", "area_2"]].min(axis=1)
-    connected["%_intersect"] = connected["intersect_area"] / (connected["min_area"])
-
-    connected = connected[connected["%_intersect"] > intersect_ratio]
-    group = get_connected_components(connected)
-    polygons["group"] = polygons.uid.map(group)
-    polygons.crs = {"init": "EPSG:4326"}
-
-    polygons = polygons.dissolve(by="group", aggfunc="mean")
-    polygons = gpd.GeoDataFrame(polygons[["geometry"]])
-    polygons = polygons.explode()
-    polygons.to_file(out_file, driver="GeoJSON")
-
-    return polygons
 
 def predict_image(
     image_file, 
@@ -480,15 +439,11 @@ def predict_image(
 
     polygons = merge_polygons(out_dir, crs=crs)
     geoms = polygons['geometry'].tolist()
-    intersection_iter = gpd.GeoDataFrame(
+    polygons = gpd.GeoDataFrame(
         gpd.GeoSeries([poly[0].union(poly[1]) 
         for poly in  itertools.combinations(geoms, 2) 
         if poly[0].intersects(poly[1])]), columns=['geometry']
     )
-    intersection_iter.to_file(out_file)
-    #polygons = connect_polygons(
-    #    polygons, 
-    #    out_file=out_file, 
-    #    intersect_ratio=intersect_ratio
-    #)
+    polygons = polygons.unary_union
+    polygons.to_file(out_file)
     return polygons
