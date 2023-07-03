@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import torch
-import rasterio
+import rasterio as rio
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -11,6 +11,7 @@ from PIL import Image
 import rasterio.mask
 from rasterio.plot import show
 from matplotlib.patches import Rectangle
+from shapely.geometry import box
 
 from groundingdino.models import build_model
 from groundingdino.util import box_ops
@@ -27,6 +28,7 @@ from rasterio.features import shapes
 from tqdm.notebook import tqdm
 import pandas as pd
 import numpy as np
+import networkx as nx
 
 
 # Define constants
@@ -211,8 +213,8 @@ def model_predict(
     visualize=True
 ):
     #print(f"Reading {image_file}...")
-    with rasterio.open(image_file) as src:
-        image_np = src.read().transpose((1, 2, 0))  # Convert rasterio image to numpy array
+    with rio.open(image_file) as src:
+        image_np = src.read().transpose((1, 2, 0))  # Convert rio image to numpy array
         transform = src.transform  # Save georeferencing information
         crs = src.crs  # Save the Coordinate Reference System
     image_pil = Image.fromarray(image_np[:, :, :3])
@@ -297,7 +299,7 @@ def generate_tiles(image_file, size=3000):
       GeoPandas DataFrame: Contains 64 x 64 polygon tiles
     """
 
-    # Open the raster image using rasterio
+    # Open the raster image using rio
     raster = rio.open(image_file)
     width, height = raster.shape
 
@@ -335,7 +337,7 @@ def generate_tiles(image_file, size=3000):
 
 def show_crop(image, shape, title=''):
     """Crops an image based on the polygon shape.
-    Reference: https://rasterio.readthedocs.io/en/latest/api/rasterio.mask.html#rasterio.mask.mask
+    Reference: https://rio.readthedocs.io/en/latest/api/rio.mask.html#rio.mask.mask
 
     Args:
         image (str): Image file path (.tif)
@@ -348,7 +350,7 @@ def show_crop(image, shape, title=''):
         show(out_image, title=title)
         
         
-def predict_crop(image, shape, model, out_dir, uid):
+def predict_crop(image, text_prompt, shape, model, out_dir, uid):
     """Generates model prediction using trained model
 
     Args:
@@ -363,7 +365,7 @@ def predict_crop(image, shape, model, out_dir, uid):
     with rio.open(image) as src:
         # Crop source image using polygon shape
         # See more information here:
-        # https://rasterio.readthedocs.io/en/latest/api/rasterio.mask.html#rasterio.mask.mask
+        # https://rio.readthedocs.io/en/latest/api/rio.mask.html#rio.mask.mask
         out_image, out_transform = rio.mask.mask(src, shape, crop=True)
 
         if np.mean(out_image) == 255:
@@ -384,14 +386,14 @@ def predict_crop(image, shape, model, out_dir, uid):
             os.makedirs(out_dir)
         temp_tif = os.path.join(out_dir, f"{uid}.tif")
 
-        with rasterio.open(temp_tif, "w", **out_meta) as dest:
+        with rio.open(temp_tif, "w", **out_meta) as dest:
             dest.write(out_image)
 
         # Open the cropped image and generated prediction
         # using the trained Pytorch model
         out_file = os.path.join(out_dir, f"{uid}.gpkg")
 
-        langsam_utils.model_predict(
+        model_predict(
           temp_tif,
           model,
           text_prompt,
@@ -407,25 +409,26 @@ def merge_polygons(gpkg_dir):
 
     polygons = []
     for file in files:
-        if file.split('.')[-1] == '.gpkg':
+        if file.split('.')[-1] == 'gpkg':
             filepath = os.path.join(gpkg_dir, file)
             polygons.append(gpd.read_file(filepath))
 
     polygons = pd.concat(polygons)
-    polygons = gpd.GeoDataFrame(polygons, crs="EPSG:32620")[['geometry']]
+    polygons = gpd.GeoDataFrame(polygons)[['geometry']]
+    polygons = polygons.set_crs("EPSG:32620", allow_override=True)
     polygons = polygons.to_crs("EPSG:4326")
     return polygons
         
 
 def get_connected_components(polygons):
-    graph = nx.from_pandas_edgelist(polygons, "index_1", "index_2", ["%_intersect"])
+    graph = nx.from_pandas_edgelist(polygons, "uid_1", "uid_2", ["%_intersect"])
     l = list(nx.connected_components(graph))
     L = [dict.fromkeys(y, x) for x, y in enumerate(l)]
     d = {k: v for d in L for k, v in d.items()}
     return d
     
     
-def connect_polygons(polygons, connected_file, intersect_ratio=0.6):
+def connect_polygons(polygons, out_file, intersect_ratio=0.6):
     polygons['uid'] = polygons.index
     polygons["area"] = polygons["geometry"].area
     overlay = gpd.overlay(polygons, polygons, how="intersection")
@@ -446,13 +449,13 @@ def connect_polygons(polygons, connected_file, intersect_ratio=0.6):
     connected["%_intersect"] = connected["intersect_area"] / (connected["min_area"])
 
     connected = connected[connected["%_intersect"] > intersect_ratio]
-    group = get_connected_components(polygons)
+    group = get_connected_components(connected)
     polygons["group"] = polygons.uid.map(group)
     polygons.crs = {"init": "EPSG:4326"}
 
     polygons = polygons.dissolve(by="group", aggfunc="mean")
     polygons = gpd.GeoDataFrame(polygons[["geometry"]])
     polygons = polygons.explode()
-    polygons.to_file(connected_file, driver="GeoJSON")
+    polygons.to_file(out_file, driver="GeoJSON")
 
     return polygons
