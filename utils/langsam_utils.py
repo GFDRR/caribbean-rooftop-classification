@@ -29,6 +29,7 @@ from tqdm.notebook import tqdm
 import pandas as pd
 import numpy as np
 import networkx as nx
+import itertools
 
 
 # Define constants
@@ -302,7 +303,7 @@ def generate_tiles(image_file, size=3000):
     """
 
     # Open the raster image using rio
-    with rio.open(image_tile) as raster:
+    with rio.open(image_file) as raster:
         width, height = raster.shape
 
     # Create a dictionary which will contain our 64 x 64 px polygon tiles
@@ -478,9 +479,16 @@ def predict_image(
         predict_crop(image_file, text_prompt, shape, model, out_dir, index)
 
     polygons = merge_polygons(out_dir, crs=crs)
-    polygons = connect_polygons(
-        polygons, 
-        out_file=out_file, 
-        intersect_ratio=intersect_ratio
+    geoms = polygons['geometry'].tolist()
+    intersection_iter = gpd.GeoDataFrame(
+        gpd.GeoSeries([poly[0].union(poly[1]) 
+        for poly in  itertools.combinations(geoms, 2) 
+        if poly[0].intersects(poly[1])]), columns=['geometry']
     )
+    intersection_iter.to_file(out_file)
+    #polygons = connect_polygons(
+    #    polygons, 
+    #    out_file=out_file, 
+    #    intersect_ratio=intersect_ratio
+    #)
     return polygons
