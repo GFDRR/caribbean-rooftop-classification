@@ -483,7 +483,7 @@ def predict_image(
     text_threshold=0.3,
     max_area=1000, 
     min_area=1,
-    tolerance=0.0004
+    tolerance=0.000005
 ):
     with rio.open(image_file) as src:
         crs = src.crs
