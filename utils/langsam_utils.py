@@ -22,6 +22,8 @@ from huggingface_hub import hf_hub_download
 
 from segment_anything import sam_model_registry
 from segment_anything import SamPredictor
+
+from shapely.geometry.polygon import Polygon
 from shapely.geometry import shape
 from rasterio.features import shapes
 
@@ -243,15 +245,15 @@ def model_predict(
 ):
     with rio.open(image_file) as src:
         image_np = src.read().transpose((1, 2, 0))
-        transform = src.transform  
-        crs = src.crs 
+        transform = src.transform
+        crs = src.crs
     image_pil = Image.fromarray(image_np[:, :, :3])
 
     masks, boxes, phrases, logit = model.predict(
-        image_pil, 
-        text_prompt, 
-        box_threshold=box_threshold, 
-        text_threshold=text_threshold
+        image_pil,
+        text_prompt,
+        box_threshold=box_threshold,
+        text_threshold=text_threshold,
     )
     torch.cuda.empty_cache()
 
@@ -259,13 +261,9 @@ def model_predict(
     mask_overlay = np.zeros_like(image_np[..., 0], dtype=np.uint8)
     for i, (box, mask) in enumerate(zip(boxes, masks)):
         if isinstance(mask, torch.Tensor):
-            mask = (
-                mask.cpu().numpy().astype(np.uint8)
-            )  
-        mask_overlay += ((mask > 0) * (i + 1)).astype(
-            np.uint8
-        )  
-    mask_overlay = (mask_overlay > 0) * 255  
+            mask = mask.cpu().numpy().astype(np.uint8)
+        mask_overlay += ((mask > 0) * (i + 1)).astype(np.uint8)
+    mask_overlay = (mask_overlay > 0) * 255
 
     if out_file:
         save_predictions(out_file, mask_overlay, transform, crs)
@@ -279,7 +277,7 @@ def visualize_predictions(image_pil, boxes, mask_overlay):
     plt.imshow(image_pil)
 
     for box in boxes:
-        box = box.cpu().numpy()  
+        box = box.cpu().numpy()
         rect = patches.Rectangle(
             (box[0], box[1]),
             box[2] - box[0],
@@ -290,7 +288,7 @@ def visualize_predictions(image_pil, boxes, mask_overlay):
         )
         plt.gca().add_patch(rect)
 
-    plt.imshow(mask_overlay, cmap="viridis", alpha=0.4)  
+    plt.imshow(mask_overlay, cmap="viridis", alpha=0.4)
     plt.title(f"Segmented")
     plt.show()
 
@@ -362,6 +360,22 @@ def generate_tiles(image_file, size=3000):
     return results
 
 
+def close_holes(poly: Polygon) -> Polygon:
+    """
+    Close polygon holes by limitation to the exterior ring.
+    Source: https://stackoverflow.com/a/61466689
+
+    Args:
+        poly: Input shapely Polygon
+    Example:
+        df.geometry.apply(lambda p: close_holes(p))
+    """
+    if poly.interiors:
+        return Polygon(list(poly.exterior.coords))
+    else:
+        return poly
+
+
 def show_crop(image, shape, title=""):
     """Crops an image based on the polygon shape.
     Reference: https://rio.readthedocs.io/en/latest/api/rio.mask.html#rio.mask.mask
@@ -394,7 +408,7 @@ def predict_image_crop(
     with rio.open(image) as src:
         out_image, out_transform = rio.mask.mask(src, shape, crop=True)
 
-        if np.mean(out_image) == 255:
+        if (np.mean(out_image) == 255) or (np.mean(out_image) == 0):
             return
 
         # Get the metadata of the source image and update it
@@ -428,7 +442,7 @@ def predict_image_crop(
         )
 
 
-def merge_polygons(gpkg_dir, crs="EPSG:4326"):
+def merge_polygons(gpkg_dir, crs):
     files = filenames = next(os.walk(gpkg_dir), (None, None, []))[2]
 
     polygons = []
@@ -441,12 +455,15 @@ def merge_polygons(gpkg_dir, crs="EPSG:4326"):
 
     polygons = pd.concat(polygons)
     polygons = gpd.GeoDataFrame(polygons)[["geometry"]]
-    if crs != "EPSG:4326":
-        polygons = polygons.to_crs("EPSG:4326")
 
     geoms = polygons.geometry.unary_union
-    polygons = gpd.GeoDataFrame(geometry=[geoms])
+    polygons = gpd.GeoDataFrame(geometry=[geoms], crs=crs)
     polygons = polygons.explode().reset_index(drop=True)
+    polygons = polygons.geometry.apply(lambda p: close_holes(p))
+    
+    if crs != "EPSG:4326":
+        polygons = polygons.to_crs("EPSG:4326")
+        
     return polygons
 
 
@@ -475,7 +492,8 @@ def predict_image(
             box_threshold,
             text_threshold,
         )
-
+        
     polygons = merge_polygons(out_dir, crs=crs)
+    polygons = polygons.to_crs(crs)
     polygons.to_file(out_file, driver="GPKG")
     return polygons
