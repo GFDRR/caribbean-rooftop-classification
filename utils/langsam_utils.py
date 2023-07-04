@@ -442,7 +442,7 @@ def predict_image_crop(
         )
 
 
-def merge_polygons(gpkg_dir, crs):
+def merge_polygons(gpkg_dir, crs, max_area, min_area):
     files = filenames = next(os.walk(gpkg_dir), (None, None, []))[2]
 
     polygons = []
@@ -460,6 +460,8 @@ def merge_polygons(gpkg_dir, crs):
     polygons = gpd.GeoDataFrame(geometry=[geoms], crs=crs)
     polygons = polygons.explode().reset_index(drop=True)
     polygons.geometry = polygons.geometry.apply(lambda p: close_holes(p))
+    polygons['area'] = polygons.geometry.area
+    polygons = polygons[(polygons.area > max_area) & (polygons.area < min_area)]
     
     if crs != "EPSG:4326":
         polygons = polygons.to_crs("EPSG:4326")
@@ -476,6 +478,8 @@ def predict_image(
     out_file,
     box_threshold=0.3,
     text_threshold=0.3,
+    max_area=1000, 
+    min_area=5
 ):
     with rio.open(image_file) as src:
         crs = src.crs
@@ -493,7 +497,7 @@ def predict_image(
             text_threshold,
         )
         
-    polygons = merge_polygons(out_dir, crs=crs)
+    polygons = merge_polygons(out_dir, crs, max_area, min_area)
     polygons = polygons.to_crs(crs)
     polygons.to_file(out_file, driver="GPKG")
     return polygons
