@@ -476,5 +476,5 @@ def predict_image(
         )
 
     polygons = merge_polygons(out_dir, crs=crs)
-    polygons.to_file("output.gpkg", driver="GPKG")
+    polygons.to_file(out_file, driver="GPKG")
     return polygons
