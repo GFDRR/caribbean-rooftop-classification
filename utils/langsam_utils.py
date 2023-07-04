@@ -435,11 +435,12 @@ def merge_polygons(gpkg_dir, crs="EPSG:4326"):
     for file in files:
         if file.split(".")[-1] == "gpkg":
             filepath = os.path.join(gpkg_dir, file)
-            polygons.append(gpd.read_file(filepath))
+            gdf = gpd.read_file(filepath)
+            gdf = gdf.set_crs(crs, allow_override=True)
+            polygons.append(gdf)
 
     polygons = pd.concat(polygons)
     polygons = gpd.GeoDataFrame(polygons)[["geometry"]]
-    polygons = polygons.set_crs(crs, allow_override=True)
     if crs != "EPSG:4326":
         polygons = polygons.to_crs("EPSG:4326")
 
