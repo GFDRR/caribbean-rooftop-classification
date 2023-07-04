@@ -460,12 +460,14 @@ def merge_polygons(gpkg_dir, crs, max_area, min_area, tolerance):
     polygons = gpd.GeoDataFrame(geometry=[geoms], crs=crs)
     polygons = polygons.explode().reset_index(drop=True)
     polygons.geometry = polygons.geometry.apply(lambda p: close_holes(p))
-    polygons['area'] = polygons.geometry.area
-    polygons = polygons[(polygons.area < max_area) & (polygons.area > min_area)]
-    polygons.geometry = polygons.geometry.simplify(tolerance=tolerance)
     
-    if crs != "EPSG:4326":
-        polygons = polygons.to_crs("EPSG:4326")
+    
+    if crs != "EPSG:32620":
+        polygons = polygons.to_crs("EPSG:32620")
+        polygons['area'] = polygons.geometry.area
+        polygons = polygons[(polygons.area < max_area) & (polygons.area > min_area)]
+        polygons.geometry = polygons.geometry.simplify(tolerance=tolerance)
+        polygons = polygons.to_crs(crs)
         
     return polygons
 
@@ -480,7 +482,7 @@ def predict_image(
     box_threshold=0.3,
     text_threshold=0.3,
     max_area=1000, 
-    min_area=5,
+    min_area=1,
     tolerance=0.0004
 ):
     with rio.open(image_file) as src:
@@ -500,6 +502,5 @@ def predict_image(
         )
         
     polygons = merge_polygons(out_dir, crs, max_area, min_area, tolerance)
-    polygons = polygons.to_crs(crs)
     polygons.to_file(out_file, driver="GPKG")
     return polygons
