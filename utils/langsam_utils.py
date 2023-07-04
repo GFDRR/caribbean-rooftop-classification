@@ -461,13 +461,13 @@ def merge_polygons(gpkg_dir, crs, max_area, min_area, tolerance):
     polygons = polygons.explode().reset_index(drop=True)
     polygons.geometry = polygons.geometry.apply(lambda p: close_holes(p))
     
+    polygons = polygons.to_crs("EPSG:32620")
+    polygons['area'] = polygons.geometry.area
+    polygons = polygons[(polygons.area < max_area) & (polygons.area > min_area)]
     
-    if crs != "EPSG:32620":
-        polygons = polygons.to_crs("EPSG:32620")
-        polygons['area'] = polygons.geometry.area
-        polygons = polygons[(polygons.area < max_area) & (polygons.area > min_area)]
-        polygons.geometry = polygons.geometry.simplify(tolerance=tolerance)
-        polygons = polygons.to_crs(crs)
+    polygons = polygons.to_crs("EPSG:4326")
+    polygons.geometry = polygons.geometry.simplify(tolerance=tolerance)
+    polygons = polygons.to_crs(crs)
         
     return polygons
 
