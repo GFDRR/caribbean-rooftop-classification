@@ -459,7 +459,7 @@ def merge_polygons(gpkg_dir, crs):
     geoms = polygons.geometry.unary_union
     polygons = gpd.GeoDataFrame(geometry=[geoms], crs=crs)
     polygons = polygons.explode().reset_index(drop=True)
-    polygons = polygons.geometry.apply(lambda p: close_holes(p))
+    polygons.geometry = polygons.geometry.apply(lambda p: close_holes(p))
     
     if crs != "EPSG:4326":
         polygons = polygons.to_crs("EPSG:4326")
