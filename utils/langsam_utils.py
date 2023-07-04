@@ -104,7 +104,8 @@ class LangSAM:
                                          text_threshold=text_threshold,
                                          device=self.device)
         W, H = image_pil.size
-        boxes = box_ops.box_cxcywh_to_xyxy(boxes) * torch.Tensor([W, H, W, H]).to(boxes.device)  # Ensure tensor is on the same device
+        boxes = box_ops.box_cxcywh_to_xyxy(boxes) * torch.Tensor([W, H, W, H]).to(boxes.device)  
+        # Ensure tensor is on the same device
         return boxes, logits, phrases
 
     def predict_sam(self, image_pil: Image, boxes: torch.Tensor):
@@ -418,6 +419,9 @@ def merge_polygons(gpkg_dir, crs="EPSG:4326"):
     polygons = polygons.set_crs(crs, allow_override=True)
     if crs != "EPSG:4326":
         polygons = polygons.to_crs("EPSG:4326")
+        
+    polygons = gpd.GeoDataFrame(geometry=[geoms])
+    polygons = polygons.explode().reset_index(drop=True)
     return polygons
 
 
@@ -438,12 +442,5 @@ def predict_image(
         predict_crop(image_file, text_prompt, shape, model, out_dir, index)
 
     polygons = merge_polygons(out_dir, crs=crs)
-    geoms = polygons['geometry'].tolist()
-    polygons = gpd.GeoDataFrame(
-        gpd.GeoSeries([poly[0].union(poly[1]) 
-        for poly in  itertools.combinations(geoms, 2) 
-        if poly[0].intersects(poly[1])]), columns=['geometry']
-    )
-    polygons = polygons.unary_union
-    polygons.to_file(out_file)
+    polygons.to_file("output.gpkg", driver='GPKG')
     return polygons
