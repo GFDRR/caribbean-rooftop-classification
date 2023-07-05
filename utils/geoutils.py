@@ -2,6 +2,7 @@ import os
 import random
 import subprocess
 import rasterio as rio
+import rasterio.mask
 
 import geopandas as gpd
 import pandas as pd
@@ -139,15 +140,33 @@ def visualize_image_crops(
             remove_ticks(axes[i])
 
 
+#def crop_shape(shape, filename, scale, in_file, out_file):
+#    shape.geometry = shape.geometry.apply(lambda x: x.minimum_rotated_rectangle)
+#    shape.geometry = shape.geometry.scale(scale, scale)
+#    shape.to_file(filename, driver="GPKG")
+#    subprocess.call(
+#        f"gdalwarp -q -cutline {filename} -crop_to_cutline -dstalpha {in_file} {out_file}",
+#        shell=True,
+#    )
+
 def crop_shape(shape, filename, scale, in_file, out_file):
     shape.geometry = shape.geometry.apply(lambda x: x.minimum_rotated_rectangle)
     shape.geometry = shape.geometry.scale(scale, scale)
-    shape.to_file(filename, driver="GPKG")
-    subprocess.call(
-        f"gdalwarp -q -cutline {filename} -crop_to_cutline -dstalpha {in_file} {out_file}",
-        shell=True,
-    )
-
+    
+    with rio.open(in_file) as src:
+        out_image, out_transform = rasterio.mask.mask(
+            src, [shape.iloc[0].geometry], crop=True
+        )
+        out_meta = src.meta
+        out_meta.update({
+            "driver": "GTiff",
+            "height": out_image.shape[1],
+            "width": out_image.shape[2],
+            "transform": out_transform}
+        )
+    with rio.open(out_file, "w", **out_meta) as dest:
+        dest.write(out_image)
+    
 
 def generate_image_crops(data, column, in_file, out_dir, aoi, scale=1.5, clip=False):
     logging.info(f"{column} size: {data[~data[column].isna()].shape}")

@@ -17,19 +17,21 @@ import config
 import logging
 logging.basicConfig(level = logging.INFO)
 
-def predict(bldgs, in_file, exp_config, prefix=''):
+def predict(bldgs, in_file, out_dir, exp_config, model_file=None, prefix=''):
     c = config.create_config(exp_config, prefix=prefix)
-    exp_dir = os.path.join(c['exp_dir'], c['version'], c['exp_name'])
     classes = geoutils.get_classes_dict(c['attribute'])
     logging.info(f"Config: {c}")
+    
+    if not model_file:
+        exp_dir = os.path.join(c['exp_dir'], c['version'], c['exp_name'])
+        model_file = os.path.join(exp_dir, "best_model.pth")
+    
+    model = load_model(c, model_file, n_classes=len(classes))
+    return generate_predictions(bldgs, model, c, in_file, out_dir, classes)   
 
-    model = load_model(c, exp_dir, n_classes=len(classes))
-    return generate_predictions(bldgs, model, c, in_file, exp_dir, classes=classes)   
 
-
-def load_model(c, exp_dir, n_classes):
+def load_model(c, model_file, n_classes):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model_file = os.path.join(exp_dir, "best_model.pth")
     model = cnn_utils.get_model(c["model"], n_classes, c["mode"], c["dropout"])
     model.load_state_dict(torch.load(model_file, map_location=device))
     model = model.to(device)
