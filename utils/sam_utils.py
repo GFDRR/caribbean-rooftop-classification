@@ -394,17 +394,6 @@ def show_crop(image, shape, title=""):
 def predict_image_crop(
     image, text_prompt, shape, model, out_dir, uid, box_threshold, text_threshold
 ):
-    """Generates model prediction using trained model
-
-    Args:
-      image (str): Image file path (.tiff)
-      shape (geometry): The tile with which to crop the image
-      classes (list): List of LULC classes
-
-    Return
-      str: Predicted label
-    """
-
     with rio.open(image) as src:
         out_image, out_transform = rio.mask.mask(src, shape, crop=True)
 
@@ -460,15 +449,15 @@ def merge_polygons(gpkg_dir, crs, max_area, min_area, tolerance):
     polygons = gpd.GeoDataFrame(geometry=[geoms], crs=crs)
     polygons = polygons.explode().reset_index(drop=True)
     polygons.geometry = polygons.geometry.apply(lambda p: close_holes(p))
-    
+
     polygons = polygons.to_crs("EPSG:32620")
-    polygons['area'] = polygons.geometry.area
+    polygons["area"] = polygons.geometry.area
     polygons = polygons[(polygons.area < max_area) & (polygons.area > min_area)]
-    
+
     polygons = polygons.to_crs("EPSG:4326")
     polygons.geometry = polygons.geometry.simplify(tolerance=tolerance)
     polygons = polygons.to_crs(crs)
-        
+
     return polygons
 
 
@@ -481,9 +470,9 @@ def predict_image(
     out_file,
     box_threshold=0.3,
     text_threshold=0.3,
-    max_area=1000, 
+    max_area=1000,
     min_area=1,
-    tolerance=0.000005
+    tolerance=0.000005,
 ):
     with rio.open(image_file) as src:
         crs = src.crs
@@ -500,7 +489,7 @@ def predict_image(
             box_threshold,
             text_threshold,
         )
-        
+
     polygons = merge_polygons(out_dir, crs, max_area, min_area, tolerance)
     polygons.to_file(out_file, driver="GPKG")
     return polygons
