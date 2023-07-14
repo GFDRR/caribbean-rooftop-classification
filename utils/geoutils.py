@@ -4,12 +4,15 @@ import subprocess
 import rasterio as rio
 import rasterio.mask
 
+from tqdm import tqdm
 import geopandas as gpd
 import pandas as pd
 
 import matplotlib.pyplot as plt
 from rasterio.plot import show
-from tqdm import tqdm
+
+from shapely.geometry.polygon import Polygon
+from shapely.geometry import box
 
 import logging
 

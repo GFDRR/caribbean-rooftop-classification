@@ -4,7 +4,12 @@ import sys
 from tqdm import tqdm
 import pandas as pd
 import geopandas as gpd
+import rasterio as rio
 import numpy as np
+
+from PIL import Image
+from shapely.geometry import shape
+from rasterio.features import shapes
 
 import torch
 import torch.nn.functional as nn
@@ -193,10 +198,9 @@ def predict_image_crop(
 
 def predict_image(
     image_file,
-    text_prompt,
-    model,
     out_dir,
     out_file,
+    text_prompt,
     tile_size=3000,
     box_threshold=0.3,
     text_threshold=0.3,
@@ -204,6 +208,10 @@ def predict_image(
     min_area=5,
     tolerance=0.000005,
 ):
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    
+    model = sam_utils.LangSAM()
     tiles = geoutils.generate_tiles(image_file, size=tile_size)
     with rio.open(image_file) as src:
         crs = src.crs

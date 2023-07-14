@@ -33,7 +33,6 @@ import groundingdino.datasets.transforms as T
 from PIL import Image
 import rasterio.mask
 from rasterio.plot import show
-from shapely.geometry import box
 
 from groundingdino.models import build_model
 from groundingdino.util import box_ops
@@ -44,10 +43,6 @@ from huggingface_hub import hf_hub_download
 
 from segment_anything import sam_model_registry
 from segment_anything import SamPredictor
-
-from shapely.geometry.polygon import Polygon
-from shapely.geometry import shape
-from rasterio.features import shapes
 
 from tqdm.notebook import tqdm
 import pandas as pd
