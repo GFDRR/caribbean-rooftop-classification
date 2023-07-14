@@ -12,8 +12,9 @@ from rasterio.plot import show
 from tqdm import tqdm
 
 import logging
-logging.basicConfig(level = logging.INFO)
-pd.set_option('mode.chained_assignment', None)
+
+logging.basicConfig(level=logging.INFO)
+pd.set_option("mode.chained_assignment", None)
 
 
 def get_classes_dict(attribute):
@@ -46,7 +47,9 @@ def read_image(filepath, n_channels=3):
 
 
 def get_annotated_bldgs(config):
-    bldgs_path = os.path.join(config["vectors_dir"], config["version"], config["bldgs_file"])
+    bldgs_path = os.path.join(
+        config["vectors_dir"], config["version"], config["bldgs_file"]
+    )
     bldgs = gpd.read_file(bldgs_path)
 
     if "roof_type" in bldgs.columns and "roof_material" in bldgs.columns:
@@ -66,7 +69,7 @@ def get_annotated_bldgs(config):
 
 def get_image_dirs(config):
     data_dir = os.path.join(config["rasters_dir"], "tiles", config["version"])
-    rgb_path = os.path.join(data_dir, 'RGB')
+    rgb_path = os.path.join(data_dir, "RGB")
     lidar_path = os.path.join(data_dir, "LIDAR")
     return rgb_path, lidar_path
 
@@ -140,37 +143,30 @@ def visualize_image_crops(
             remove_ticks(axes[i])
 
 
-#def crop_shape(shape, filename, scale, in_file, out_file):
-#    shape.geometry = shape.geometry.apply(lambda x: x.minimum_rotated_rectangle)
-#    shape.geometry = shape.geometry.scale(scale, scale)
-#    shape.to_file(filename, driver="GPKG")
-#    subprocess.call(
-#        f"gdalwarp -q -cutline {filename} -crop_to_cutline -dstalpha {in_file} {out_file}",
-#        shell=True,
-#    )
-
 def crop_shape(shape, filename, scale, in_file, out_file):
     shape.geometry = shape.geometry.apply(lambda x: x.minimum_rotated_rectangle)
     shape.geometry = shape.geometry.scale(scale, scale)
-    
+
     with rio.open(in_file) as src:
         out_image, out_transform = rasterio.mask.mask(
             src, [shape.iloc[0].geometry], crop=True
         )
         out_meta = src.meta
-        out_meta.update({
-            "driver": "GTiff",
-            "height": out_image.shape[1],
-            "width": out_image.shape[2],
-            "transform": out_transform}
+        out_meta.update(
+            {
+                "driver": "GTiff",
+                "height": out_image.shape[1],
+                "width": out_image.shape[2],
+                "transform": out_transform,
+            }
         )
     with rio.open(out_file, "w", **out_meta) as dest:
         dest.write(out_image)
-    
+
 
 def generate_image_crops(data, column, in_file, out_dir, aoi, scale=1.5, clip=False):
     logging.info(f"{column} size: {data[~data[column].isna()].shape}")
-    
+
     data = data[(~data[column].isna())]
     for attr in data[column].unique():
         out_path = os.path.join(out_dir, attr)
@@ -199,3 +195,111 @@ def generate_image_crops(data, column, in_file, out_dir, aoi, scale=1.5, clip=Fa
                     dst.write_band(1, array)
 
             pbar.set_description(f"{attr}")
+
+
+def close_holes(poly: Polygon) -> Polygon:
+    """
+    Close polygon holes by limitation to the exterior ring.
+    Source: https://stackoverflow.com/a/61466689
+
+    Args:
+        poly: Input shapely Polygon
+    Example:
+        df.geometry.apply(lambda p: close_holes(p))
+    """
+    if poly.interiors:
+        return Polygon(list(poly.exterior.coords))
+    else:
+        return poly
+
+
+def show_crop(image, shape, title=""):
+    """Crops an image based on the polygon shape.
+    Reference: https://rio.readthedocs.io/en/latest/api/rio.mask.html#rio.mask.mask
+
+    Args:
+        image (str): Image file path (.tif)
+        shape (geometry): The tile with which to crop the image
+        title(str): Image title
+    """
+
+    with rio.open(image) as src:
+        out_image, out_transform = rio.mask.mask(src, shape, crop=True)
+        show(out_image, title=title)
+
+
+def merge_polygons(gpkg_dir, crs, max_area, min_area, tolerance):
+    files = next(os.walk(gpkg_dir), (None, None, []))[2]
+
+    polygons = []
+    for file in files:
+        if file.split(".")[-1] == "gpkg":
+            filepath = os.path.join(gpkg_dir, file)
+            gdf = gpd.read_file(filepath)
+            gdf = gdf.set_crs(crs, allow_override=True)
+            polygons.append(gdf)
+
+    polygons = pd.concat(polygons)
+    polygons = gpd.GeoDataFrame(polygons)[["geometry"]]
+
+    geoms = polygons.geometry.unary_union
+    polygons = gpd.GeoDataFrame(geometry=[geoms], crs=crs)
+    polygons = polygons.explode().reset_index(drop=True)
+    polygons.geometry = polygons.geometry.apply(lambda p: close_holes(p))
+
+    polygons = polygons.to_crs("EPSG:32620")
+    polygons["area"] = polygons.geometry.area
+    polygons = polygons[(polygons.area < max_area) & (polygons.area > min_area)]
+
+    polygons = polygons.to_crs("EPSG:4326")
+    polygons.geometry = polygons.geometry.simplify(tolerance=tolerance)
+    polygons = polygons.to_crs(crs)
+
+    return polygons
+
+
+def generate_tiles(image_file, size=3000):
+    """Generates n x n polygon tiles.
+
+    Args:
+      image_file (str): Image file path (.tif)
+      output_file (str): Output file path (.geojson)
+      area_str (str): Name of the region
+      size(int): Window size
+
+    Returns:
+      GeoPandas DataFrame: Contains 64 x 64 polygon tiles
+    """
+
+    # Open the raster image using rio
+    with rio.open(image_file) as raster:
+        width, height = raster.shape
+
+    # Create a dictionary which will contain our 64 x 64 px polygon tiles
+    # Later we'll convert this dict into a GeoPandas DataFrame.
+    geo_dict = {"geometry": []}
+    index = 0
+
+    # Do a sliding window across the raster image
+    with tqdm(total=width * height) as pbar:
+        for w in range(0, width, int(size / 2)):
+            for h in range(0, height, int(size / 2)):
+                # Create a Window of your desired size
+                window = rio.windows.Window(h, w, size, size)
+                # Get the georeferenced window bounds
+                bbox = rio.windows.bounds(window, raster.transform)
+                # Create a shapely geometry from the bounding box
+                bbox = box(*bbox)
+
+                # Update dictionary
+                # geo_dict['id'].append(uid)
+                geo_dict["geometry"].append(bbox)
+
+                index += 1
+                pbar.update(size * size)
+
+    # Cast dictionary as a GeoPandas DataFrame
+    results = gpd.GeoDataFrame(pd.DataFrame(geo_dict))
+    # Set CRS to EPSG:4326
+    results.crs = {"init": "epsg:4326"}
+    return results
