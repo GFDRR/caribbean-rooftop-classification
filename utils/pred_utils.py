@@ -187,10 +187,10 @@ def segment(
     mask_overlay = (mask_overlay > 0) * 255
 
     if out_file:
-        save_predictions(out_file, mask_overlay, transform, crs)
+        save_segmentations(out_file, mask_overlay, transform, crs)
 
     if visualize:
-        visualize_predictions(image_pil, boxes, mask_overlay)
+        visualize_segmentations(image_pil, boxes, mask_overlay)
 
 
 def visualize_segmentations(image_pil, boxes, mask_overlay):
