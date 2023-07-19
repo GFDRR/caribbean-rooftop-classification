@@ -24,7 +24,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 
-def predict(bldgs, in_file, out_dir, exp_config, model_file=None, prefix=""):
+def predict_image(bldgs, in_file, out_dir, exp_config, model_file=None, prefix=""):
     c = config.create_config(exp_config, prefix=prefix)
     classes = geoutils.get_classes_dict(c["attribute"])
     logging.info(f"Config: {c}")
@@ -32,22 +32,19 @@ def predict(bldgs, in_file, out_dir, exp_config, model_file=None, prefix=""):
     if not model_file:
         exp_dir = os.path.join(c["exp_dir"], c["version"], c["exp_name"])
         model_file = os.path.join(exp_dir, "best_model.pth")
-
-    model = load_model(c, model_file, n_classes=len(classes))
-    return generate_predictions(bldgs, model, c, in_file, out_dir, classes)
-
-
-def load_model(c, model_file, n_classes):
+    
+    n_classes=len(classes)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = cnn_utils.get_model(c["model"], n_classes, c["mode"], c["dropout"])
     model.load_state_dict(torch.load(model_file, map_location=device))
     model = model.to(device)
     model.eval()
+    
     logging.info("Model file {} successfully loaded.".format(model_file))
-    return model
+    return predict(bldgs, model, c, in_file, out_dir, classes)
 
 
-def generate_predictions(data, model, c, in_file, out_dir, classes, scale=1.5):
+def predict(data, model, c, in_file, out_dir, classes, scale=1.5):
     preds, probs = [], []
     pbar = tqdm(
         enumerate(data.iterrows()),
@@ -80,7 +77,85 @@ def generate_predictions(data, model, c, in_file, out_dir, classes, scale=1.5):
     return gpd.GeoDataFrame(pd.concat([data, probs], axis=1))
 
 
-def model_predict(
+def segment_image(
+    image_file,
+    out_dir,
+    out_file,
+    text_prompt,
+    tile_size=3000,
+    box_threshold=0.3,
+    text_threshold=0.3,
+    max_area=1000,
+    min_area=5,
+    tolerance=0.000005,
+):
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+    
+    model = sam_utils.LangSAM()
+    tiles = geoutils.generate_tiles(image_file, size=tile_size)
+    with rio.open(image_file) as src:
+        crs = src.crs
+
+    for index in tqdm(range(len(tiles)), total=len(tiles)):
+        shape = [tiles.iloc[index]["geometry"]]
+        segment_image_crop(
+            image_file,
+            text_prompt,
+            shape,
+            model,
+            out_dir,
+            index,
+            box_threshold,
+            text_threshold,
+        )
+
+    polygons = geoutils.merge_polygons(out_dir, crs, max_area, min_area, tolerance)
+    polygons.to_file(out_file, driver="GPKG")
+    return polygons
+
+
+def segment_image_crop(
+    image, text_prompt, shape, model, out_dir, uid, box_threshold, text_threshold
+):
+    with rio.open(image) as src:
+        out_image, out_transform = rio.mask.mask(src, shape, crop=True)
+
+        if (np.mean(out_image) == 255) or (np.mean(out_image) == 0):
+            return
+
+        # Get the metadata of the source image and update it
+        # with the width, height, and transform of the cropped image
+        out_meta = src.meta
+        out_meta.update(
+            {
+                "driver": "GTiff",
+                "height": out_image.shape[1],
+                "width": out_image.shape[2],
+                "transform": out_transform,
+            }
+        )
+
+        # Save the cropped image as a temporary TIFF file.
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+        temp_tif = os.path.join(out_dir, f"{uid}.tif")
+        with rio.open(temp_tif, "w", **out_meta) as dest:
+            dest.write(out_image)
+
+        out_file = os.path.join(out_dir, f"{uid}.gpkg")
+        segment(
+            temp_tif,
+            model,
+            text_prompt,
+            box_threshold=box_threshold,
+            text_threshold=text_threshold,
+            out_file=out_file,
+            visualize=False,
+        )
+
+
+def segment(
     image_file,
     model,
     text_prompt,
@@ -118,7 +193,7 @@ def model_predict(
         visualize_predictions(image_pil, boxes, mask_overlay)
 
 
-def visualize_predictions(image_pil, boxes, mask_overlay):
+def visualize_segmentations(image_pil, boxes, mask_overlay):
     plt.figure(figsize=(10, 10))
     plt.imshow(image_pil)
 
@@ -141,7 +216,7 @@ def visualize_predictions(image_pil, boxes, mask_overlay):
     return mask_overlay
 
 
-def save_predictions(filename, mask_overlay, transform, crs):
+def save_segmentations(filename, mask_overlay, transform, crs):
     mask = mask_overlay.astype("int16")  
     results = (
         {"properties": {"raster_val": v}, "geometry": s}
@@ -154,81 +229,3 @@ def save_predictions(filename, mask_overlay, transform, crs):
         gdf = gpd.GeoDataFrame.from_features(geoms)
         gdf.crs = crs 
         gdf.to_file(filename, driver="GPKG")
-
-
-def predict_image_crop(
-    image, text_prompt, shape, model, out_dir, uid, box_threshold, text_threshold
-):
-    with rio.open(image) as src:
-        out_image, out_transform = rio.mask.mask(src, shape, crop=True)
-
-        if (np.mean(out_image) == 255) or (np.mean(out_image) == 0):
-            return
-
-        # Get the metadata of the source image and update it
-        # with the width, height, and transform of the cropped image
-        out_meta = src.meta
-        out_meta.update(
-            {
-                "driver": "GTiff",
-                "height": out_image.shape[1],
-                "width": out_image.shape[2],
-                "transform": out_transform,
-            }
-        )
-
-        # Save the cropped image as a temporary TIFF file.
-        if not os.path.exists(out_dir):
-            os.makedirs(out_dir)
-        temp_tif = os.path.join(out_dir, f"{uid}.tif")
-        with rio.open(temp_tif, "w", **out_meta) as dest:
-            dest.write(out_image)
-
-        out_file = os.path.join(out_dir, f"{uid}.gpkg")
-        model_predict(
-            temp_tif,
-            model,
-            text_prompt,
-            box_threshold=box_threshold,
-            text_threshold=text_threshold,
-            out_file=out_file,
-            visualize=False,
-        )
-
-
-def predict_image(
-    image_file,
-    out_dir,
-    out_file,
-    text_prompt,
-    tile_size=3000,
-    box_threshold=0.3,
-    text_threshold=0.3,
-    max_area=1000,
-    min_area=5,
-    tolerance=0.000005,
-):
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-    
-    model = sam_utils.LangSAM()
-    tiles = geoutils.generate_tiles(image_file, size=tile_size)
-    with rio.open(image_file) as src:
-        crs = src.crs
-
-    for index in tqdm(range(len(tiles)), total=len(tiles)):
-        shape = [tiles.iloc[index]["geometry"]]
-        predict_image_crop(
-            image_file,
-            text_prompt,
-            shape,
-            model,
-            out_dir,
-            index,
-            box_threshold,
-            text_threshold,
-        )
-
-    polygons = geoutils.merge_polygons(out_dir, crs, max_area, min_area, tolerance)
-    polygons.to_file(out_file, driver="GPKG")
-    return polygons
