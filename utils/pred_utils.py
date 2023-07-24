@@ -21,6 +21,7 @@ import config
 import sam_utils
 
 import logging
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -32,14 +33,14 @@ def predict_image(bldgs, in_file, out_dir, exp_config, model_file=None, prefix="
     if not model_file:
         exp_dir = os.path.join(c["exp_dir"], c["version"], c["exp_name"])
         model_file = os.path.join(exp_dir, "best_model.pth")
-    
-    n_classes=len(classes)
+
+    n_classes = len(classes)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = cnn_utils.get_model(c["model"], n_classes, c["mode"], c["dropout"])
     model.load_state_dict(torch.load(model_file, map_location=device))
     model = model.to(device)
     model.eval()
-    
+
     logging.info("Model file {} successfully loaded.".format(model_file))
     return predict(bldgs, model, c, in_file, out_dir, classes)
 
@@ -74,7 +75,11 @@ def predict(data, model, c, in_file, out_dir, classes, scale=1.5):
     probs_col = [f"{class_}_PROB" for class_ in classes]
     probs = pd.DataFrame(probs, columns=probs_col)
     data[c["attribute"]] = preds
-    return gpd.GeoDataFrame(pd.concat([data, probs], axis=1))
+    data[f"{c['attribute']}_PROB"] = probs.max(axis=1)
+
+    results = gpd.GeoDataFrame(pd.concat([data, probs], axis=1))
+    results.columns = [col.upper() for col in results.columns]
+    return results
 
 
 def segment_image(
@@ -91,7 +96,7 @@ def segment_image(
 ):
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
-    
+
     model = sam_utils.LangSAM()
     tiles = geoutils.generate_tiles(image_file, size=tile_size)
     with rio.open(image_file) as src:
@@ -217,15 +222,15 @@ def visualize_segmentations(image_pil, boxes, mask_overlay):
 
 
 def save_segmentations(filename, mask_overlay, transform, crs):
-    mask = mask_overlay.astype("int16")  
+    mask = mask_overlay.astype("int16")
     results = (
         {"properties": {"raster_val": v}, "geometry": s}
         for i, (s, v) in enumerate(shapes(mask, transform=transform))
-        if v == 255  
+        if v == 255
     )
 
     geoms = list(results)
     if len(geoms) > 0:
         gdf = gpd.GeoDataFrame.from_features(geoms)
-        gdf.crs = crs 
+        gdf.crs = crs
         gdf.to_file(filename, driver="GPKG")
