@@ -78,7 +78,7 @@ def predict(data, model, c, in_file, out_dir, classes, scale=1.5):
     data[f"{c['attribute']}_PROB"] = probs.max(axis=1)
 
     results = gpd.GeoDataFrame(pd.concat([data, probs], axis=1))
-    results.columns = [col.upper() for col in results.columns if col != "geometry"]
+    results.columns = [col.upper() if col != "geometry" else col for col in results.columns ]
     return results
 
 
