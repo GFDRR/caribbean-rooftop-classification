@@ -104,16 +104,19 @@ def segment_image(
 
     for index in tqdm(range(len(tiles)), total=len(tiles)):
         shape = [tiles.iloc[index]["geometry"]]
-        segment_image_crop(
-            image_file,
-            text_prompt,
-            shape,
-            model,
-            out_dir,
-            index,
-            box_threshold,
-            text_threshold,
-        )
+        try:
+            segment_image_crop(
+                image_file,
+                text_prompt,
+                shape,
+                model,
+                out_dir,
+                index,
+                box_threshold,
+                text_threshold,
+            )
+        except:
+            continue
 
     polygons = geoutils.merge_polygons(out_dir, crs, max_area, min_area, tolerance)
     polygons.to_file(out_file, driver="GPKG")
