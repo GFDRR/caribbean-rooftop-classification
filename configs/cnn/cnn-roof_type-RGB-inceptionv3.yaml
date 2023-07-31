@@ -1,0 +1,24 @@
+data_dir: './data/rasters/tiles/'
+csv_dir: './data/csv/'
+exp_dir: './exp/'
+
+version: 'version_02'
+attribute: 'roof_type'
+exp_name: 'exp_04'
+mode: 'RGB'
+batch_size: 32
+n_workers: 4
+n_epochs: 30
+
+model: "inceptionv3"
+pretrained: True
+scheduler: "ReduceLROnPlateau"
+optimizer: "Adam"
+label_smoothing: 0.1
+lr: 0.00001
+img_size: 299
+momentum: 
+gamma: 
+step_size: 
+patience: 7
+dropout:
