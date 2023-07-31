@@ -1,0 +1,3 @@
+data_dir: './data/rasters/tiles/'
+csv_dir: './data/csv/'
+exp_dir: './exp/'
