@@ -1,7 +1,5 @@
 config1: "./configs/config_02.yaml"
 config2: "./configs/config_08.yaml"
-exp_dir: "./exp/"
-exp_name: 'exp-10'
 mode: 'fusion_probs'
 
 model: 'RandomForestClassifier'

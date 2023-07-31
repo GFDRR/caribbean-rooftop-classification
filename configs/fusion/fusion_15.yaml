@@ -1,7 +1,5 @@
 config1: "./configs/config_03.yaml"
 config2: "./configs/config_06.yaml"
-exp_dir: "./exp/"
-exp_name: 'exp-15'
 mode: 'fusion_embeds'
 
 model: 'LogisticRegression'
