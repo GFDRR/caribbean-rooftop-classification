@@ -1,9 +1,0 @@
-aoi: 'Coulibistrie'
-version: 'version_02'
-bldgs_file: 'building_footprints_annotated_Coulibistrie.gpkg'
-rgb_source_file: 'drone/drone_coulibistrie_DOM.tif'
-
-rasters_dir: './data/rasters/'
-vectors_dir: './data/vectors/'
-csv_dir: './data/csv/'
-attributes: ['roof_type', 'roof_material']
