@@ -1,0 +1,18 @@
+attribute: 'roof_type'
+mode: 'RGB'
+batch_size: 32
+n_workers: 4
+n_epochs: 30
+
+model: "efficientnetb0"
+pretrained: True
+scheduler: "ReduceLROnPlateau"
+optimizer: "Adam"
+label_smoothing: 0.1
+lr: 0.00001
+img_size: 224
+momentum: 
+gamma: 
+step_size: 
+patience: 7
+dropout:

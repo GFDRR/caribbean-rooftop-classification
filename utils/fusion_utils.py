@@ -13,9 +13,6 @@ import geoutils
 import cnn_utils
 
 
-CNN_ARCH = {"resnet50": 2048, "inceptionv3": 2048, "efficientnetb0": 1280}
-
-
 def extract_probs_embedding(model, c, input_file):
     """Extracts deep feature embeddings from the trained CNN model.
     Source: https://becominghuman.ai/extract-a-feature-vector-for-any-image-with-pytorch-9717561d1d4c
@@ -36,7 +33,7 @@ def extract_probs_embedding(model, c, input_file):
     image = cnn_utils.read_image(input_file, c["mode"])
     transforms = cnn_utils.get_transforms(c["img_size"], c["mode"])
 
-    embedding_size = CNN_ARCH[c["model"]]
+    embedding_size = c["embed_size"]
     embedding = torch.zeros(embedding_size)
     layer = model._modules.get("avgpool")
     h = layer.register_forward_hook(copy_data)
