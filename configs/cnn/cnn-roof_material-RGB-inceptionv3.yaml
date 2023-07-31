@@ -1,10 +1,4 @@
-data_dir: './data/rasters/tiles/'
-csv_dir: './data/csv/'
-exp_dir: './exp/'
-
-version: 'version_02'
 attribute: 'roof_material'
-exp_name: 'exp_03'
 mode: 'RGB'
 batch_size: 32
 n_workers: 4
