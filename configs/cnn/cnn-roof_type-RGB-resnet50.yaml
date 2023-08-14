@@ -6,6 +6,7 @@ n_epochs: 30
 
 model: "resnet50"
 pretrained: True
+resampler: "RandomOverSampler"
 scheduler: "ReduceLROnPlateau"
 optimizer: "Adam"
 label_smoothing: 0.1

@@ -5,6 +5,7 @@ n_workers: 4
 n_epochs: 30
 
 model: "inceptionv3"
+resampler: "RandomOverSampler"
 pretrained: True
 scheduler: "ReduceLROnPlateau"
 optimizer: "Adam"
