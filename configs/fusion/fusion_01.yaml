@@ -1,4 +1,0 @@
-config1: "./configs/config_02.yaml"
-config2: "./configs/config_08.yaml"
-mode: 'fusion_mean'
-

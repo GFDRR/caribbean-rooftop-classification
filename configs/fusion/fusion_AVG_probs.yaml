@@ -1,0 +1,4 @@
+config1: "./configs/cnn/cnn-roof_material-LIDAR-efficientnetb0.yaml"
+config2: "./configs/cnn/cnn-roof_material-LIDAR-inceptionv3.yaml"
+mode: 'fusion_mean'
+
