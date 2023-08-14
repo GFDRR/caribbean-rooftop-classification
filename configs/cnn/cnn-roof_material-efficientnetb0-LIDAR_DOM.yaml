@@ -1,5 +1,5 @@
-attribute: 'roof_type'
-mode: 'RGB'
+data: 'LIDAR_DOM'
+attribute: 'roof_material'
 batch_size: 32
 n_workers: 4
 n_epochs: 30

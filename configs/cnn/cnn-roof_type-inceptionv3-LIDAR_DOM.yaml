@@ -1,17 +1,17 @@
-attribute: 'roof_material'
-mode: 'LIDAR'
+attribute: 'roof_type'
+data: 'LIDAR_DOM'
 batch_size: 32
 n_workers: 4
 n_epochs: 30
 
-model: "efficientnetb0"
-resampler: "RandomOverSampler"
+model: "inceptionv3"
 pretrained: True
+resampler: "RandomOverSampler"
 scheduler: "ReduceLROnPlateau"
 optimizer: "Adam"
 label_smoothing: 0.1
 lr: 0.00001
-img_size: 224
+img_size: 299
 momentum: 
 gamma: 
 step_size: 
