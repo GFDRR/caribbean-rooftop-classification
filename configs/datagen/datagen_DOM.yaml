@@ -1,6 +1,0 @@
-aoi: 'DOM'
-attributes: ['roof_type', 'roof_material']
-
-bldgs_file: 'ortho_DOM.gpkg'
-rgb_source_file: 'ortho/ortho_DOM.tif'
-lidar_source_file: 'lidar/ndsm_DOM.tif'
