@@ -93,7 +93,7 @@ def main(c):
         val_results, val_cm = cnn_utils.evaluate(
             data_loader["TEST"], classes, model, criterion, device, wandb=wandb, logging=logging
         )
-        scheduler.step(val_results["loss"])
+        scheduler.step(val_results["f1_score"])
 
         # Save best model so far
         if val_results["f1_score"] > best_score:
