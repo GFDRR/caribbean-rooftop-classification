@@ -351,6 +351,7 @@ def generate_train_test(
         )
         subcounts = subcounts.set_index(attributes + ["dataset"])
         logging.info(subcounts)
+        logging.info(data.image_src.value_counts())
         logging.info(data.dataset.value_counts())
 
     if not os.path.isdir(out_dir):
