@@ -13,12 +13,12 @@ from rasterio.plot import show
 
 from shapely.geometry.polygon import Polygon
 from shapely.geometry import box
-
 import logging
 
 logging.basicConfig(level=logging.INFO)
 pd.set_option("mode.chained_assignment", None)
 
+SEED = 42
 
 def get_classes_dict(attribute):
     classes_dict = {
@@ -49,32 +49,19 @@ def read_image(filepath, n_channels=3):
     return image
 
 
-def get_annotated_bldgs(config):
-    bldgs_path = os.path.join(
-        config["vectors_dir"], config["version"], config["bldgs_file"]
-    )
+def get_annotated_bldgs(config, index):
+    bldgs_path = os.path.join(config["vectors_dir"], config["bldgs_files"][index])
     bldgs = gpd.read_file(bldgs_path)
 
     if "roof_type" in bldgs.columns and "roof_material" in bldgs.columns:
         bldgs = bldgs[(bldgs.roof_type != "OTHER") & (bldgs.roof_material != "OTHER")]
         bldgs.roof_type = bldgs.roof_type.replace({"PYRAMID": "HIP", "HALF_HIP": "HIP"})
-        logging.info(f"Dimensions: {bldgs.shape}")
-
-        bldgs_shape = bldgs[
-            (~bldgs.roof_type.isna()) | (~bldgs.roof_material.isna())
-        ].shape
-        logging.info(f"Dimensions (non-null): {bldgs_shape}")
+        bldgs = bldgs[(~bldgs.roof_type.isna()) | (~bldgs.roof_material.isna())]
+        logging.info(f"Dimensions (non-null): {bldgs.shape}")
         logging.info(bldgs.roof_material.value_counts())
         logging.info(bldgs.roof_type.value_counts())
 
     return bldgs
-
-
-def get_image_dirs(config):
-    data_dir = os.path.join(config["rasters_dir"], "tiles", config["version"])
-    rgb_path = os.path.join(data_dir, "RGB")
-    lidar_path = os.path.join(data_dir, "LIDAR")
-    return rgb_path, lidar_path
 
 
 def inspect_image_crops(
@@ -146,7 +133,7 @@ def visualize_image_crops(
             remove_ticks(axes[i])
 
 
-def crop_shape(shape, filename, scale, in_file, out_file):
+def crop_shape(shape, scale, in_file, out_file):
     shape.geometry = shape.geometry.apply(lambda x: x.minimum_rotated_rectangle)
     shape.geometry = shape.geometry.scale(scale, scale)
 
@@ -167,37 +154,44 @@ def crop_shape(shape, filename, scale, in_file, out_file):
         dest.write(out_image)
 
 
-def generate_image_crops(data, column, in_file, out_dir, aoi, scale=1.5, clip=False):
-    logging.info(f"{column} size: {data[~data[column].isna()].shape}")
+def generate_image_crops(data, in_file, out_path, aoi, scale=1.5, clip=False):
+    if not os.path.isdir(out_path):
+        os.makedirs(out_path)
+    pbar = tqdm(
+        enumerate(data.iterrows()),
+        total=len(data),
+        bar_format="{l_bar}{bar:15}{r_bar}{bar:-15b}",
+    )
+    
+    csv = []
+    for index, (_, row) in pbar:
+        uid = row["UID"]
+        roof_type = row['roof_type']
+        roof_material = row['roof_material']
+        
+        out_file = os.path.join(out_path, f"{aoi}-{uid}-{roof_type}-{roof_material}.tif")
+        shape = data[(data.UID == uid)]
+        crop_shape(shape, scale, in_file, out_file)
 
-    data = data[(~data[column].isna())]
-    for attr in data[column].unique():
-        out_path = os.path.join(out_dir, attr)
-        if not os.path.isdir(out_path):
-            os.makedirs(out_path)
-
-        subset = data[data[column] == attr]
-        pbar = tqdm(
-            enumerate(subset.iterrows()),
-            total=len(subset),
-            bar_format="{l_bar}{bar:15}{r_bar}{bar:-15b}",
-        )
-        for index, (_, row) in pbar:
-            uid = row["UID"]
-            out_file = os.path.join(out_path, f"{aoi}_{uid}.tif")
-            shape = data[(data.UID == uid)]
-            filename = "temp.gpkg"
-            crop_shape(shape, filename, scale, in_file, out_file)
-
-            if clip:
-                with rio.open(out_file) as image:
-                    meta = image.meta
-                    array = image.read(1)
-                    array[array < 0] = 0
-                with rio.open(out_file, "w", **meta) as dst:
-                    dst.write_band(1, array)
-
-            pbar.set_description(f"{attr}")
+        if clip:
+            with rio.open(out_file) as image:
+                meta = image.meta
+                array = image.read(1)
+                array[array < 0] = 0
+            with rio.open(out_file, "w", **meta) as dst:
+                dst.write_band(1, array)
+        
+        image_src = in_file.split('/')[-2].upper()
+        csv.append([aoi, out_file, image_src, roof_type, roof_material])
+        
+    csv = pd.DataFrame(csv, columns=[
+        "aoi", 
+        "filename",
+        "image_src", 
+        "roof_type", 
+        'roof_material'
+    ])
+    return csv
 
 
 def close_holes(poly: Polygon) -> Polygon:
@@ -306,3 +300,60 @@ def generate_tiles(image_file, size=3000):
     # Set CRS to EPSG:4326
     results.crs = {"init": "epsg:4326"}
     return results
+
+
+def generate_train_test(
+    data,
+    out_dir,
+    test_size,
+    attributes=None,
+    test_aoi=None,
+    test_src=None,
+    stratified=True,
+    verbose=True,
+):
+    data["dataset"] = None
+    total_size = len(data)
+    test_size = int(total_size * test_size)
+    logging.info(f"Data dimensions: {total_size}")
+
+    test = data.copy()
+    if test_aoi != None:
+        test = data[data.aoi == test_aoi]
+    if test_src != None:
+        test = data[data.image_src == test_src]
+    if stratified:
+        value_counts = data.groupby(attributes)[attributes[-1]].value_counts()
+        value_counts = pd.DataFrame(value_counts).reset_index()
+        for _, row in value_counts.iterrows():
+            subtest = test.copy()
+            for i in range(len(attributes)):
+                subtest = subtest[subtest[attributes[i]] == row[attributes[i]]]
+            subtest_size = int(test_size * (row['count'] / total_size))
+            if subtest_size > len(subtest):
+                subtest_size = len(subtest)
+            subtest_files = subtest.sample(
+                subtest_size, random_state=SEED
+            ).filename.values
+            in_test = data["filename"].isin(subtest_files)
+            data.loc[in_test, "dataset"] = "TEST"
+    data.dataset = data.dataset.fillna("TRAIN")
+
+    if verbose:
+        value_counts["percentage"] = value_counts["count"]/total_size
+        logging.info(value_counts)
+        subcounts = pd.DataFrame(
+            data.groupby(attributes + ["dataset"]).size().reset_index()
+        )
+        subcounts.columns = attributes + ["dataset", "count"]
+        subcounts["percentage"] = (
+            subcounts[subcounts.dataset == "TEST"]["count"] / test_size
+        )
+        subcounts = subcounts.set_index(attributes + ["dataset"])
+        logging.info(subcounts)
+        logging.info(data.dataset.value_counts())
+
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+        
+    return data
