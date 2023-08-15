@@ -20,7 +20,7 @@ def main(c):
     img_srcs = c['img_srcs']
     for img_src in img_srcs:
         filename = f"{c['config_name']}.csv"
-        tile_path = os.path.join(c['tile_dir'], img_src)
+        tile_path = os.path.join(c['tile_dir'], c['config_name'])
         out_file = os.path.join(c['csv_dir'], filename)
     
         data = []
