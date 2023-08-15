@@ -2,7 +2,7 @@ attribute: 'roof_type'
 data: 'LIDAR_DOM'
 batch_size: 32
 n_workers: 4
-n_epochs: 30
+n_epochs: 60
 
 model: "resnet50"
 pretrained: True

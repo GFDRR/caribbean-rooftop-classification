@@ -2,7 +2,7 @@ data: 'RGB_DOM'
 attribute: 'roof_material'
 batch_size: 32
 n_workers: 4
-n_epochs: 30
+n_epochs: 60
 
 model: "efficientnetb0"
 pretrained: True

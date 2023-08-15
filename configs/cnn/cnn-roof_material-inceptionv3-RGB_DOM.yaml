@@ -2,7 +2,7 @@ attribute: 'roof_material'
 data: 'RGB_DOM'
 batch_size: 32
 n_workers: 4
-n_epochs: 30
+n_epochs: 60
 
 model: "inceptionv3"
 pretrained: True
