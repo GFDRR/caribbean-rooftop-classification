@@ -73,6 +73,7 @@ class CaribbeanDataset(Dataset):
     def __getitem__(self, index):
         item = self.dataset.iloc[index]
         filename = self.prefix + item["filename"]
+        filename = filename.replace('\\', '/')
         image = read_image(filename, self.mode)
 
         if self.transform:
