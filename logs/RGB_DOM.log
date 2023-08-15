@@ -248,6 +248,10 @@ HIP       BLUE_TARP       TEST        35    0.016533
                           TRAIN      266         NaN
 NO_ROOF   INCOMPLETE      TEST       210    0.099197
                           TRAIN     1122         NaN
+image_src
+ORTHO    6090
+DRONE    2378
+Name: count, dtype: int64
 dataset
 TRAIN    6751
 TEST     1717

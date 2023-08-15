@@ -64,6 +64,9 @@ HIP       BLUE_TARP       TEST        83    0.054534
                           TRAIN      184         NaN
 NO_ROOF   INCOMPLETE      TEST       280    0.183968
                           TRAIN      842         NaN
+image_src
+LIDAR    6090
+Name: count, dtype: int64
 dataset
 TRAIN    4578
 TEST     1512
