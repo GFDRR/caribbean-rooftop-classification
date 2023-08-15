@@ -42,7 +42,7 @@ def main(c):
             data,
             attributes=c['attributes'],
             out_dir=c['csv_dir'],
-            test_size=0.25,
+            test_size=c['test_size'],
             test_aoi=c['test_aoi'],
             test_src=c['test_src'],
             stratified=True
