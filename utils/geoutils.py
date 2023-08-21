@@ -65,71 +65,79 @@ def get_annotated_bldgs(config, index):
 
 
 def inspect_image_crops(
-    data,
+    rgb_data,
     column,
     value,
-    rgb_path,
-    lidar_path,
-    aoi,
     index=0,
     n_rows=5,
     n_cols=5,
     figsize=(15, 10),
+    lidar_data=[],
+    prefix=''
 ):
     fig, axes = plt.subplots(n_rows * 2, n_cols, figsize=figsize)
-    data = data[data[column] == value]
-    samples = data.iloc[index : index + (n_rows * n_cols)].iterrows()
+    rgb_data = rgb_data[rgb_data[column] == value].reset_index()
+    samples = rgb_data.iloc[index : index + ((n_rows  * 2) * n_cols)].iterrows()
     row_index, col_index = 0, 0
 
+    increment = 1
     for _, item in samples:
-        filename = f"{aoi}_{item.UID}.tif"
-        lidar_filepath = os.path.join(lidar_path, column, value, filename)
-        rgb_filepath = os.path.join(rgb_path, column, value, filename)
+        rgb_filepath = prefix + item["filepath"]
+        
+        rgb_image = read_image(rgb_filepath, n_channels=3)
+        show(rgb_image, ax=axes[row_index, col_index])
+        remove_ticks(axes[row_index, col_index])
+        
+        lidar_flag = False
+        if len(lidar_data) > 0:
+            filename = item['filename']
+            if filename in lidar_data['filename'].unique():
+                lidar_item = lidar_data[lidar_data["filename"] == filename]
+                lidar_filepath = prefix + lidar_item.iloc[0].filepath
+                lidar_image = read_image(lidar_filepath, n_channels=1)
+                show(lidar_image, ax=axes[row_index + 1, col_index])
+                remove_ticks(axes[row_index + 1, col_index])
+                lidar_flag = True
 
-        if os.path.isfile(lidar_filepath) and os.path.isfile(rgb_filepath):
-            lidar_image = read_image(lidar_filepath, n_channels=1)
-            rgb_image = read_image(rgb_filepath, n_channels=3)
+        axes[row_index, col_index].set_title(
+            f"{item.aoi}_{item.UID}", 
+            fontdict={"fontsize": 9}
+        )
 
-            show(rgb_image, ax=axes[row_index, col_index])
-            show(lidar_image, ax=axes[row_index + 1, col_index])
-
-            remove_ticks(axes[row_index, col_index])
-            remove_ticks(axes[row_index + 1, col_index])
-
-            axes[row_index, col_index].set_title(
-                int(item.UID), fontdict={"fontsize": 9}
-            )
-
-            col_index += 1
-
-            if col_index >= n_cols:
+        col_index += 1
+        if col_index >= n_cols:
+            if lidar_flag:
                 row_index += 2
-                col_index = 0
+            else:
+                row_index += 1
+            col_index = 0
+            
+        if row_index >= n_rows*2:
+            break
+            
 
 
 def visualize_image_crops(
-    folder_path, column, n_samples=8, n_channels=3, figsize=(15, 10)
+    data, column, n_samples=8, n_channels=3, figsize=(15, 10), prefix=''
 ):
-    out_dir = os.path.join(folder_path, column)
-    folders = [folder.name for folder in os.scandir(out_dir)]
-    fig, axs = plt.subplots(len(folders), 1, figsize=figsize)
+    categories = data[column].unique()
+    fig, axs = plt.subplots(len(categories), 1, figsize=figsize)
     gridspec = axs[0].get_subplotspec().get_gridspec()
     subfigs = [fig.add_subfigure(gs) for gs in gridspec]
 
-    for row, (folder, subfig) in enumerate(zip(folders, subfigs)):
-        out_path = os.path.join(out_dir, folder)
-        files = os.listdir(out_path)
-
-        subfig.suptitle(f"{folder}")
+    for subfig, category in zip(subfigs, categories):
+        subfig.suptitle(f"{category}")
         axes = subfig.subplots(nrows=1, ncols=n_samples)
-        n_samples = min(n_samples, len(files))
-        samples = random.sample(files, n_samples)
+        subdata = data[data[column] == category]
+        n_samples = min(n_samples, len(subdata))
+        samples = subdata.sample(n_samples).reset_index(drop=True)
 
-        for i, file in enumerate(samples):
-            out_file = os.path.join(out_path, file)
-            image = read_image(out_file, n_channels)
+        for i, item in samples.iterrows():
+            filename = prefix + item['filepath']
+            image = read_image(filename, n_channels)
             show(image, ax=axes[i])
-            axes[i].set_title(file, fontdict={"fontsize": 9})
+            title = f"{item.aoi}_{item.UID}"
+            axes[i].set_title(title, fontdict={"fontsize": 9})
             remove_ticks(axes[i])
 
 
@@ -169,7 +177,8 @@ def generate_image_crops(data, in_file, out_path, aoi, scale=1.5, clip=False):
         roof_type = row['roof_type']
         roof_material = row['roof_material']
         
-        out_file = os.path.join(out_path, f"{aoi}-{uid}-{roof_type}-{roof_material}.tif")
+        filename = f"{aoi}-{uid}-{roof_type}-{roof_material}.tif"
+        out_file = os.path.join(out_path, filename)
         shape = data[(data.UID == uid)]
         crop_shape(shape, scale, in_file, out_file)
 
@@ -182,10 +191,12 @@ def generate_image_crops(data, in_file, out_path, aoi, scale=1.5, clip=False):
                 dst.write_band(1, array)
         
         image_src = in_file.split('/')[-2].upper()
-        csv.append([aoi, out_file, image_src, roof_type, roof_material])
+        csv.append([uid, aoi, out_file, filename, image_src, roof_type, roof_material])
         
     csv = pd.DataFrame(csv, columns=[
+        "UID",
         "aoi", 
+        "filepath",
         "filename",
         "image_src", 
         "roof_type", 
