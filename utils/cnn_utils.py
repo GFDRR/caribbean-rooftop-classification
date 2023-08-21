@@ -9,7 +9,8 @@ import pandas as pd
 import numpy as np
 
 import logging
-logging.basicConfig(level = logging.INFO)
+
+logging.basicConfig(level=logging.INFO)
 
 import torch
 import torch.nn as nn
@@ -60,27 +61,25 @@ def read_image(filename, mode):
 
 class CaribbeanDataset(Dataset):
     def __init__(
-        self, dataset, image_folder, attribute, classes, mode="RGB", transform=None
+        self, dataset, attribute, classes, mode="RGB", transform=None, prefix=''
     ):
         self.dataset = dataset
-        self.image_folder = image_folder
         self.attribute = attribute
         self.transform = transform
         self.classes = classes
         self.mode = mode
+        self.prefix = prefix
 
     def __getitem__(self, index):
         item = self.dataset.iloc[index]
-        filename = item["filename"]
-        filename = os.path.join(
-            self.image_folder, self.attribute, item["label"], filename
-        )
-        image = read_image(filename, self.mode)
+        filepath= self.prefix + item["filepath"]
+        filepath = filepath.replace('\\', '/')
+        image = read_image(filepath, self.mode)
 
         if self.transform:
             x = self.transform(image)
 
-        y = self.classes[item["label"]]
+        y = self.classes[item[self.attribute]]
         image.close()
         return x, y
 
@@ -100,7 +99,7 @@ class SquarePad:
         return F.pad(image, padding, 0, "constant")
 
 
-def visualize_data(data, data_loader, phase="test", mode="RGB", n=4):
+def visualize_data(data, data_loader, phase="TEST", mode="RGB", n=4):
     imagenet_mean, imagenet_std = get_imagenet_mean_std(mode)
     inputs, classes = next(iter(data_loader[phase]))
     fig, axes = plt.subplots(n, n, figsize=(6, 6))
@@ -125,22 +124,20 @@ def visualize_data(data, data_loader, phase="test", mode="RGB", n=4):
 
 def get_resampled_dataset(data, phase, config):
     data = data[data.dataset == phase]
-    if phase == 'train' and config['resampler'] != None:
-        resampler = clf_utils.get_resampler(config['resampler'])
-        data, _ = resampler.fit_resample(data, data['label'])
+    if phase == "train" and config["resampler"] != None:
+        resampler = clf_utils.get_resampler(config["resampler"])
+        data, _ = resampler.fit_resample(data, data[config["attribute"]])
     return data
 
 
-def load_dataset(config, phases):    
-    csv_file = f"{config['attribute']}.csv"
-    csv_path = os.path.join(config["csv_dir"], config["version"], csv_file)
+def load_dataset(config, phases, prefix=''):
+    mode = config['data'].split("_")[0]
+    csv_path = os.path.join(config["csv_dir"], f"{config['data']}.csv")
+    data_dir = os.path.join(config['tile_dir'], mode)
     dataset = pd.read_csv(csv_path)
-    
-    rgb_path, lidar_path = geoutils.get_image_dirs(config)
-    data_dir = rgb_path if config['mode'] == 'RGB' else lidar_path     
-    
-    transforms = get_transforms(size=config["img_size"], mode=config["mode"])
-    classes = list(dataset.label.unique())
+
+    transforms = get_transforms(size=config["img_size"], mode=mode)
+    classes = list(dataset[config["attribute"]].unique())
     classes = {class_: index for index, class_ in enumerate(classes)}
     logging.info(classes)
 
@@ -149,11 +146,11 @@ def load_dataset(config, phases):
             get_resampled_dataset(dataset, phase, config)
             .sample(frac=1, random_state=SEED)
             .reset_index(drop=True),
-            data_dir,
             config["attribute"],
             classes,
-            config["mode"],
+            mode,
             transforms[phase],
+            prefix
         )
         for phase in phases
     }
@@ -171,7 +168,7 @@ def load_dataset(config, phases):
     return data, data_loader, classes
 
 
-def train(data_loader, model, criterion, optimizer, device, wandb=None):
+def train(data_loader, model, criterion, optimizer, device, logging, wandb=None):
     model.train()
 
     y_actuals, y_preds = [], []
@@ -199,14 +196,14 @@ def train(data_loader, model, criterion, optimizer, device, wandb=None):
     epoch_results["loss"] = epoch_loss
 
     learning_rate = optimizer.param_groups[0]["lr"]
-    print(f"Loss: {epoch_loss} {epoch_results} LR: {learning_rate}")
+    logging.info(f"Train Loss: {epoch_loss} {epoch_results} LR: {learning_rate}")
 
     if wandb is not None:
         wandb.log({"train_" + k: v for k, v in epoch_results.items()})
     return epoch_results
 
 
-def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
+def evaluate(data_loader, class_names, model, criterion, device, logging, wandb=None):
     model.eval()
 
     y_actuals, y_preds = [], []
@@ -233,7 +230,7 @@ def evaluate(data_loader, class_names, model, criterion, device, wandb=None):
     confusion_matrix, cm_metrics, cm_report = eval_utils.get_confusion_matrix(
         y_actuals, y_preds, class_names
     )
-    print(f"Loss: {epoch_loss} {epoch_results}")
+    logging.info(f"Val Loss: {epoch_loss} {epoch_results}")
 
     if wandb is not None:
         wandb.log({"val_" + k: v for k, v in epoch_results.items()})
@@ -244,7 +241,7 @@ def get_transforms(size, mode="RGB"):
     imagenet_mean, imagenet_std = get_imagenet_mean_std(mode)
 
     return {
-        "train": transforms.Compose(
+        "TRAIN": transforms.Compose(
             [
                 SquarePad(),
                 transforms.Resize(size),
@@ -255,7 +252,7 @@ def get_transforms(size, mode="RGB"):
                 transforms.Normalize(imagenet_mean, imagenet_std),
             ]
         ),
-        "test": transforms.Compose(
+        "TEST": transforms.Compose(
             [
                 SquarePad(),
                 transforms.Resize(size),
@@ -370,78 +367,7 @@ def load_model(
         scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
     elif scheduler_type == "ReduceLROnPlateau":
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, factor=0.1, patience=patience
+            optimizer, factor=0.1, patience=patience, mode='max'
         )
 
     return model, criterion, optimizer, scheduler
-
-
-def generate_train_test(
-    folder_path,
-    column,
-    out_dir,
-    test_size,
-    test_aoi=None,
-    stratified=True,
-    verbose=True,
-):
-    folder_dir = os.path.join(folder_path, column)
-    folders = [folder.name for folder in os.scandir(folder_dir)]
-    data = []
-
-    for row, folder in enumerate(folders):
-        filepath = os.path.join(folder_dir, folder)
-        files = os.listdir(filepath)
-
-        for file in files:
-            aoi = file.split("_")[0]
-            data.append([aoi, file, folder])
-
-    data = pd.DataFrame(data, columns=["aoi", "filename", "label"])
-    data["dataset"] = None
-
-    total_size = len(data)
-    test_size = int(total_size * test_size)
-
-    test = data.copy()
-    if test_aoi != None:
-        test = data[data.aoi == test_aoi]
-
-    if stratified:
-        value_counts = data.label.value_counts().items()
-        for label, count in value_counts:
-            subtest = test[test.label == label]
-            subtest_size = int(test_size * (count / total_size))
-            if subtest_size > len(subtest):
-                subtest_size = len(subtest)
-            subtest_files = subtest.sample(
-                subtest_size, random_state=SEED
-            ).filename.values
-            data.loc[data["filename"].isin(subtest_files), "dataset"] = "test"
-    data.dataset = data.dataset.fillna("train")
-
-    if verbose:
-        value_counts = pd.concat(
-            [data.label.value_counts(), data.label.value_counts(normalize=True)],
-            axis=1,
-            keys=["counts", "percentage"],
-        )
-        logging.info(value_counts)
-
-        subcounts = pd.DataFrame(
-            data.groupby(["dataset", "label"]).size().reset_index()
-        )
-        subcounts.columns = ["dataset", "label", "count"]
-        subcounts["percentage"] = (
-            subcounts[subcounts.dataset == "test"]["count"] / test_size
-        )
-        subcounts = subcounts.set_index(["dataset", "label"])
-        logging.info(subcounts)
-
-    if not os.path.isdir(out_dir):
-        os.makedirs(out_dir)
-
-    out_file = os.path.join(out_dir, f"{column}.csv")
-    data.to_csv(out_file, index=False)
-
-    return data

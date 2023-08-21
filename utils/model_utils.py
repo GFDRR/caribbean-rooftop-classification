@@ -14,7 +14,8 @@ from utils import clf_utils
 from utils import eval_utils
 
 import logging
-logging.basicConfig(level = logging.INFO)
+
+logging.basicConfig(level=logging.INFO)
 
 SEED = 42
 
@@ -150,6 +151,6 @@ def model_trainer(c, data, features, target):
 
     cv = get_cv(c)
     cv.fit(X, y)
-    
+
     logging.info("Best estimator: {}".format(cv.best_estimator_))
     return cv
