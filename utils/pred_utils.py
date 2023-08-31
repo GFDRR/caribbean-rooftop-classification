@@ -25,27 +25,29 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 
-def predict_image(bldgs, in_file, out_dir, exp_config, model_file=None, prefix=""):
-    c = config.create_config(exp_config, prefix=prefix)
+def predict_image(bldgs, in_file, exp_config, model_file=None, prefix=""):
+    c = config.load_config(exp_config, prefix=prefix)
     classes = geoutils.get_classes_dict(c["attribute"])
     logging.info(f"Config: {c}")
 
     if not model_file:
-        exp_dir = os.path.join(c["exp_dir"], c["version"], c["exp_name"])
-        model_file = os.path.join(exp_dir, "best_model.pth")
+        model_file = os.path.join(c["exp_dir"], c['config_name'], f"{c['config_name']}.pth")
 
     n_classes = len(classes)
+    mode = c['data'].split("_")[0]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = cnn_utils.get_model(c["model"], n_classes, c["mode"], c["dropout"])
+    model = cnn_utils.get_model(c["model"], n_classes, mode, c["dropout"])
     model.load_state_dict(torch.load(model_file, map_location=device))
     model = model.to(device)
     model.eval()
 
     logging.info("Model file {} successfully loaded.".format(model_file))
-    return predict(bldgs, model, c, in_file, out_dir, classes)
+    return predict(bldgs, model, c, in_file, c['out_dir'], classes)
 
 
 def predict(data, model, c, in_file, out_dir, classes, scale=1.5):
+    data = data.reset_index(drop=True)
+    mode = c['data'].split("_")[0]
     preds, probs = [], []
     pbar = tqdm(
         enumerate(data.iterrows()),
@@ -58,21 +60,18 @@ def predict(data, model, c, in_file, out_dir, classes, scale=1.5):
         out_shape = os.path.join(out_dir, "temp.gpkg")
         if os.path.exists(out_file):
             os.remove(out_file)
-        geoutils.crop_shape(shape, out_shape, scale, in_file, out_file)
+        geoutils.crop_shape(shape, scale, in_file, out_file)
 
-        if os.path.exists(out_file):
-            image = cnn_utils.read_image(out_file, c["mode"])
-            transforms = cnn_utils.get_transforms(c["img_size"], c["mode"])
-            output = model(transforms["test"](image).unsqueeze(0))
-            probs.append(nn.softmax(output, dim=1).detach().numpy()[0])
-            _, pred = torch.max(output, 1)
-            label = str(classes[int(pred[0])])
-            preds.append(label)
-        else:
-            probs.append([np.nan] * len(classes))
-            preds.append(np.nan)
+        image = cnn_utils.read_image(out_file, mode)
+        transforms = cnn_utils.get_transforms(c["img_size"], mode)
+        output = model(transforms["TEST"](image).unsqueeze(0))
+        prob = nn.softmax(output, dim=1).detach().numpy()[0]
+        probs.append(prob)
+        _, pred = torch.max(output, 1)
+        label = str(classes[int(pred[0])])
+        preds.append(label)
 
-    probs_col = [f"{class_}_PROB" for class_ in classes]
+    probs_col = [f"{classes[index]}_PROB" for index in range(len(classes))]
     probs = pd.DataFrame(probs, columns=probs_col)
     data[c["attribute"]] = preds
     data[f"{c['attribute']}_PROB"] = probs.max(axis=1)
