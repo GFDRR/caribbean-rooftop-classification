@@ -1,0 +1,19 @@
+attribute: 'roof_material'
+data: 'RGB_LCA'
+batch_size: 32
+n_workers: 4
+n_epochs: 60
+
+model: "inceptionv3"
+pretrained: True
+resampler: "RandomOverSampler"
+scheduler: "ReduceLROnPlateau"
+optimizer: "Adam"
+label_smoothing: 0.1
+lr: 0.00001
+img_size: 299
+momentum: 
+gamma: 
+step_size: 
+patience: 7
+dropout: 

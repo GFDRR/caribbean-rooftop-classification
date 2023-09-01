@@ -24,10 +24,10 @@ def create_config(config_file_exp, prefix=""):
     for k, v in config.items():
         cfg[k] = v
         if "dir" in k:
+            if len(prefix) > 0:
+                cfg[k] = prefix + cfg[k]  
             if not os.path.exists(cfg[k]):
                 os.makedirs(cfg[k])
-            if len(prefix) > 0:
-                cfg[k] = prefix + cfg[k]       
     return cfg
 
 

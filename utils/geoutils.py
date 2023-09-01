@@ -22,14 +22,19 @@ SEED = 42
 
 def get_classes_dict(attribute):
     classes_dict = {
-        "roof_material": [
-            "BLUE_TARP",
-            "CONCRETE_CEMENT",
-            "HEALTHY_METAL",
-            "INCOMPLETE",
-            "IRREGULAR_METAL",
-        ],
-        "roof_type": ["FLAT", "GABLE", "HIP", "NO_ROOF"],
+        "roof_material": {
+            0: 'INCOMPLETE', 
+            1: 'BLUE_TARP', 
+            2: 'HEALTHY_METAL', 
+            3: 'IRREGULAR_METAL', 
+            4: 'CONCRETE_CEMENT'
+        },
+        "roof_type": {
+            0: 'NO_ROOF', 
+            1: 'GABLE', 
+            2: 'HIP', 
+            3: 'FLAT'
+        },
     }
     return classes_dict[attribute]
 
@@ -173,7 +178,7 @@ def generate_image_crops(data, in_file, out_path, aoi, scale=1.5, clip=False):
     
     csv = []
     for index, (_, row) in pbar:
-        uid = row["UID"]
+        uid = int(row["UID"])
         roof_type = row['roof_type']
         roof_material = row['roof_material']
         
@@ -362,6 +367,8 @@ def generate_train_test(
         )
         subcounts = subcounts.set_index(attributes + ["dataset"])
         logging.info(subcounts)
+        for attribute in attributes:
+            logging.info(data[attribute].value_counts())
         logging.info(data.image_src.value_counts())
         logging.info(data.dataset.value_counts())
 
