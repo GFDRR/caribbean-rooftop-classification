@@ -25,10 +25,10 @@ def get_classes_dict(attribute):
     classes_dict = {
         "roof_material": {
             0: 'INCOMPLETE',
-            1: 'BLUE_TARP', 
-            2: 'HEALTHY_METAL', 
-            3: 'IRREGULAR_METAL',
-            4: 'CONCRETE_CEMENT'
+            1: 'HEALTHY_METAL', 
+            2: 'IRREGULAR_METAL',
+            3: 'CONCRETE_CEMENT'
+            4: 'BLUE_TARP', 
         },
         "roof_type": {
             0: 'NO_ROOF',
