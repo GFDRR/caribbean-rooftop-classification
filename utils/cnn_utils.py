@@ -162,6 +162,7 @@ def load_dataset(config, phases, prefix=''):
             batch_size=config["batch_size"],
             num_workers=config["n_workers"],
             shuffle=True,
+            drop_last=True
         )
         for phase in phases
     }
