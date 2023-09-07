@@ -27,8 +27,8 @@ def get_classes_dict(attribute):
             0: 'INCOMPLETE',
             1: 'HEALTHY_METAL', 
             2: 'IRREGULAR_METAL',
-            3: 'CONCRETE_CEMENT'
-            4: 'BLUE_TARP', 
+            3: 'CONCRETE_CEMENT',
+            4: 'BLUE_TARP'
         },
         "roof_type": {
             0: 'NO_ROOF',
