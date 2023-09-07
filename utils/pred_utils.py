@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO)
 
 def predict_image(bldgs, in_file, exp_config, model_file=None, prefix=""):
     c = config.load_config(exp_config, prefix=prefix)
-    classes = geoutils.get_classes_dict(c["attribute"], aoi=in_file[-7:-4])
+    classes = geoutils.get_classes_dict(c["attribute"])
     logging.info(f"Config: {c}")
 
     if not model_file:

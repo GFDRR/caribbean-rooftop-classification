@@ -21,6 +21,25 @@ pd.set_option("mode.chained_assignment", None)
 SEED = 42
 
 
+def get_classes_dict(attribute):
+    classes_dict = {
+        "roof_material": {
+            0: 'INCOMPLETE',
+            1: 'BLUE_TARP', 
+            2: 'HEALTHY_METAL', 
+            3: 'IRREGULAR_METAL',
+            4: 'CONCRETE_CEMENT'
+        },
+        "roof_type": {
+            0: 'NO_ROOF',
+            1: 'GABLE', 
+            2: 'HIP', 
+            3: 'FLAT'
+        },
+    }
+    return classes_dict[attribute]
+
+
 def remove_ticks(ax):
     ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
     ax.set_axis_off()
@@ -358,38 +377,3 @@ def generate_train_test(
         os.makedirs(out_dir)
         
     return data
-
-
-def get_classes_dict(attribute, aoi='DOM'):
-    if aoi == 'DOM':
-        classes_dict = {
-            "roof_material": {
-                0: 'INCOMPLETE', 
-                1: 'BLUE_TARP', 
-                2: 'HEALTHY_METAL', 
-                3: 'IRREGULAR_METAL', 
-                4: 'CONCRETE_CEMENT'
-            },
-            "roof_type": {
-                0: 'NO_ROOF', 
-                1: 'GABLE', 
-                2: 'HIP', 
-                3: 'FLAT'
-            },
-        }
-    elif aoi == 'LCA':
-        classes_dict = {
-            "roof_material": {
-                0: 'INCOMPLETE', 
-                1: 'CONCRETE_CEMENT', 
-                2: 'HEALTHY_METAL', 
-                3: 'IRREGULAR_METAL'
-            },
-            "roof_type": {
-                0: 'NO_ROOF', 
-                1: 'FLAT', 
-                2: 'GABLE', 
-                3: 'HIP'
-            }
-        }
-    return classes_dict[attribute]

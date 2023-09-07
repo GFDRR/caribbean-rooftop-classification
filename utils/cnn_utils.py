@@ -137,8 +137,8 @@ def load_dataset(config, phases, prefix=''):
     dataset = pd.read_csv(csv_path)
 
     transforms = get_transforms(size=config["img_size"], mode=mode)
-    classes = list(dataset[config["attribute"]].unique())
-    classes = {class_: index for index, class_ in enumerate(classes)}
+    classes = geoutils.get_classes_dict(config['attribute'])
+    classes = dict((v,k) for k,v in classes.items())
     logging.info(classes)
 
     data = {
