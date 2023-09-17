@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 
 from tqdm import tqdm
 import pandas as pd
@@ -31,7 +32,11 @@ def predict_image(bldgs, in_file, exp_config, model_file=None, prefix=""):
     logging.info(f"Config: {c}")
 
     if not model_file:
-        model_file = os.path.join(c["exp_dir"], c['config_name'], f"{c['config_name']}.pth")
+        model_file = os.path.join(
+            c["exp_dir"], 
+            c['config_name'], 
+            f"{c['config_name']}.pth"
+        )
 
     n_classes = len(classes)
     mode = c['data'].split("_")[0]
