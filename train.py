@@ -10,35 +10,40 @@ import config
 import cnn_utils
 import eval_utils
 import wandb
-
 import logging
-logging.basicConfig(level=logging.INFO)
 
 # Get device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-def main(c):
+def main(c):    
     # Create experiment folder
-    exp_name = c["exp_name"]
-    exp_dir = os.path.join(c["exp_dir"], c["version"], c["exp_name"])
+    mode = c['data'].split("_")[0]
+    exp_name = c['config_name']
+    exp_dir = os.path.join(c["exp_dir"], exp_name)
     if not os.path.exists(exp_dir):
         os.makedirs(exp_dir)
+    
+    logname = os.path.join(exp_dir, f"{exp_name}.log")
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger()
+    handler = logging.FileHandler(logname)
+    handler.setLevel(logging.INFO)
+    logger.addHandler(handler)
+    
+    logging.info(device)
+    logging.info(exp_name)
 
     # Set wandb configs
-    wandb.init(project="GFDRR", config=c)
-    run_name = "-".join([c["exp_name"], c["attribute"], c["mode"], c["model"]])
-    wandb.run.name = run_name
-    wandb.run.tags = [c['version']]
+    wandb.init(project="GFDRRv2", config=c)
+    wandb.run.name = exp_name
     wandb.config = c
     logging.info(c)
-
+    
     # Load dataset
-    phases = ["train", "test"]
+    phases = ["TRAIN", "TEST"]
     data, data_loader, classes = cnn_utils.load_dataset(config=c, phases=phases)
-    logging.info(
-        "Train/test sizes: {}/{}".format(len(data["train"]), len(data["test"]))
-    )
+    logging.info(f"Train/test sizes: {len(data['TRAIN'])}/{len(data['TEST'])}")
     for phase in phases:
         logging.info(f"{phase.title()} distribution")
         n_classes = [label for _, label in data[phase]]
@@ -58,7 +63,7 @@ def main(c):
         step_size=c["step_size"],
         patience=c["patience"],
         dropout=c["dropout"],
-        mode=c["mode"],
+        mode=mode,
         device=device,
     )
     logging.info(model)
@@ -72,23 +77,23 @@ def main(c):
     best_score = -1
 
     for epoch in range(1, n_epochs + 1):
-        print("\nEpoch {}/{}".format(epoch, n_epochs))
-        print("-" * 10)
+        logging.info("\nEpoch {}/{}".format(epoch, n_epochs))
 
         # Train model
         cnn_utils.train(
-            data_loader["train"],
+            data_loader["TRAIN"],
             model,
             criterion,
             optimizer,
             device,
             wandb=wandb,
+            logging=logging
         )
         # Evauate model
         val_results, val_cm = cnn_utils.evaluate(
-            data_loader["test"], classes, model, criterion, device, wandb=wandb
+            data_loader["TEST"], classes, model, criterion, device, wandb=wandb, logging=logging
         )
-        scheduler.step(val_results["loss"])
+        scheduler.step(val_results["f1_score"])
 
         # Save best model so far
         if val_results["f1_score"] > best_score:
@@ -96,7 +101,7 @@ def main(c):
             best_weights = model.state_dict()
 
             eval_utils.save_results(val_results, val_cm, exp_dir)
-            model_file = os.path.join(exp_dir, "best_model.pth")
+            model_file = os.path.join(exp_dir, f"{exp_name}.pth")
             torch.save(model.state_dict(), model_file)
         logging.info(f"Best F1 score: {best_score}")
 
@@ -114,14 +119,14 @@ def main(c):
     )
 
     # Load best model
-    model_file = os.path.join(exp_dir, "best_model.pth")
+    model_file = os.path.join(exp_dir, f"{exp_name}.pth")
     model.load_state_dict(torch.load(model_file, map_location=device))
     model = model.to(device)
 
     # Calculate test performance using best model
     logging.info("\nTest Results")
     test_results, test_cm = cnn_utils.evaluate(
-        data_loader["test"], classes, model, criterion, device, wandb=wandb
+        data_loader["TEST"], classes, model, criterion, device, wandb=wandb, logging=logging
     )
 
     # Save results in experiment directory
@@ -135,6 +140,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Load config
-    c = config.create_config(args.exp_config)
+    c = config.load_config(args.exp_config)
 
     main(c)

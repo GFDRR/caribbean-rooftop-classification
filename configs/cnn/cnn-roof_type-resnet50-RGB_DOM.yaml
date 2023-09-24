@@ -1,0 +1,19 @@
+attribute: 'roof_type'
+data: 'RGB_DOM'
+batch_size: 32
+n_workers: 4
+n_epochs: 60
+
+model: "resnet50"
+pretrained: True
+resampler: "RandomOverSampler"
+scheduler: "ReduceLROnPlateau"
+optimizer: "Adam"
+label_smoothing: 0.1
+lr: 0.00001
+img_size: 224
+momentum: 
+gamma: 
+step_size: 
+patience: 7
+dropout: 0.5

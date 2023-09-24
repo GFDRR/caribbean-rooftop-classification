@@ -1,0 +1,14 @@
+img_srcs:
+- 'LIDAR'
+attributes: 
+- 'roof_type'
+- 'roof_material'
+aois: 
+- 'DOM'
+bldgs_files: 
+- 'bldgs_ortho_DOM.gpkg'
+LIDAR_source_files: 
+- 'lidar/ndsm_DOM.tif'
+test_size: 0.2
+test_src: 'LIDAR'
+test_aoi: 'DOM'

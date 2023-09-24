@@ -1,0 +1,288 @@
+DOM
+Dimensions (non-null): (5936, 8)
+roof_material
+HEALTHY_METAL      1400
+INCOMPLETE         1169
+CONCRETE_CEMENT    1163
+IRREGULAR_METAL    1159
+BLUE_TARP          1045
+Name: count, dtype: int64
+roof_type
+GABLE      1980
+FLAT       1568
+HIP        1304
+NO_ROOF    1084
+Name: count, dtype: int64
+COLIHAUT_DOM
+Dimensions (non-null): (373, 5)
+roof_material
+HEALTHY_METAL      187
+IRREGULAR_METAL    130
+CONCRETE_CEMENT     46
+INCOMPLETE          10
+Name: count, dtype: int64
+roof_type
+GABLE      247
+FLAT        72
+HIP         44
+NO_ROOF     10
+Name: count, dtype: int64
+COULIBISTRIE_DOM
+Dimensions (non-null): (158, 5)
+roof_material
+HEALTHY_METAL      83
+IRREGULAR_METAL    61
+CONCRETE_CEMENT    11
+INCOMPLETE          2
+BLUE_TARP           1
+Name: count, dtype: int64
+roof_type
+GABLE      95
+FLAT       36
+HIP        25
+NO_ROOF     2
+Name: count, dtype: int64
+DELICES_DOM
+Dimensions (non-null): (380, 6)
+roof_material
+IRREGULAR_METAL    108
+INCOMPLETE          97
+BLUE_TARP           90
+CONCRETE_CEMENT     54
+HEALTHY_METAL       31
+Name: count, dtype: int64
+roof_type
+FLAT       159
+GABLE       80
+NO_ROOF     74
+HIP         67
+Name: count, dtype: int64
+DUBLANC_DOM
+Dimensions (non-null): (126, 5)
+roof_material
+HEALTHY_METAL      60
+IRREGULAR_METAL    48
+CONCRETE_CEMENT    14
+INCOMPLETE          4
+Name: count, dtype: int64
+roof_type
+GABLE      79
+HIP        25
+FLAT       18
+NO_ROOF     4
+Name: count, dtype: int64
+KALINAW-SALYBIA_DOM
+Dimensions (non-null): (102, 6)
+roof_material
+HEALTHY_METAL      29
+IRREGULAR_METAL    29
+INCOMPLETE         23
+CONCRETE_CEMENT    11
+BLUE_TARP          10
+Name: count, dtype: int64
+roof_type
+FLAT       35
+GABLE      28
+NO_ROOF    20
+HIP        19
+Name: count, dtype: int64
+LAPLAINE-2_DOM
+Dimensions (non-null): (456, 6)
+roof_material
+INCOMPLETE         132
+IRREGULAR_METAL    115
+BLUE_TARP          107
+CONCRETE_CEMENT     53
+HEALTHY_METAL       49
+Name: count, dtype: int64
+roof_type
+GABLE      134
+NO_ROOF    119
+FLAT       114
+HIP         89
+Name: count, dtype: int64
+MARIGOT-3_DOM
+Dimensions (non-null): (387, 6)
+roof_material
+IRREGULAR_METAL    102
+INCOMPLETE         102
+HEALTHY_METAL       66
+BLUE_TARP           63
+CONCRETE_CEMENT     54
+Name: count, dtype: int64
+roof_type
+FLAT       114
+GABLE       93
+HIP         91
+NO_ROOF     89
+Name: count, dtype: int64
+PICHELIN_DOM
+Pointer 'hGeom' is NULL in 'OGR_G_GetGeometryType'.
+
+Pointer 'hGeom' is NULL in 'OGR_G_GetGeometryType'.
+
+Pointer 'hGeom' is NULL in 'OGR_G_GetGeometryType'.
+
+Dimensions (non-null): (149, 5)
+roof_material
+HEALTHY_METAL      64
+IRREGULAR_METAL    61
+CONCRETE_CEMENT    16
+INCOMPLETE          6
+BLUE_TARP           2
+Name: count, dtype: int64
+roof_type
+GABLE      92
+HIP        28
+FLAT       27
+NO_ROOF     2
+Name: count, dtype: int64
+ROSEAU_DOM
+Dimensions (non-null): (348, 5)
+roof_material
+HEALTHY_METAL      152
+IRREGULAR_METAL    139
+CONCRETE_CEMENT     44
+INCOMPLETE          12
+BLUE_TARP            1
+Name: count, dtype: int64
+roof_type
+GABLE      187
+FLAT        90
+HIP         66
+NO_ROOF      5
+Name: count, dtype: int64
+SALISBURY-1_DOM
+Dimensions (non-null): (83, 6)
+roof_material
+HEALTHY_METAL      43
+INCOMPLETE         17
+CONCRETE_CEMENT    11
+BLUE_TARP           6
+IRREGULAR_METAL     6
+Name: count, dtype: int64
+roof_type
+HIP        37
+FLAT       16
+NO_ROOF    15
+GABLE      15
+Name: count, dtype: int64
+SALISBURY-2_DOM
+Dimensions (non-null): (82, 6)
+roof_material
+HEALTHY_METAL      45
+CONCRETE_CEMENT    15
+INCOMPLETE         15
+IRREGULAR_METAL     4
+BLUE_TARP           3
+Name: count, dtype: int64
+roof_type
+HIP        42
+FLAT       19
+NO_ROOF    13
+GABLE       8
+Name: count, dtype: int64
+SALISBURY-3_DOM
+Dimensions (non-null): (455, 6)
+roof_material
+HEALTHY_METAL      178
+IRREGULAR_METAL    167
+INCOMPLETE          49
+CONCRETE_CEMENT     44
+BLUE_TARP           17
+Name: count, dtype: int64
+roof_type
+GABLE      235
+HIP        114
+FLAT        72
+NO_ROOF     34
+Name: count, dtype: int64
+SALISBURY-5-1_DOM
+Dimensions (non-null): (22, 6)
+roof_material
+INCOMPLETE         11
+IRREGULAR_METAL     4
+BLUE_TARP           3
+HEALTHY_METAL       2
+CONCRETE_CEMENT     2
+Name: count, dtype: int64
+roof_type
+NO_ROOF    8
+GABLE      7
+FLAT       5
+HIP        2
+Name: count, dtype: int64
+SALISBURY-5-2_DOM
+Dimensions (non-null): (93, 6)
+roof_material
+IRREGULAR_METAL    32
+HEALTHY_METAL      27
+INCOMPLETE         14
+CONCRETE_CEMENT    14
+BLUE_TARP           6
+Name: count, dtype: int64
+roof_type
+GABLE      42
+FLAT       24
+HIP        19
+NO_ROOF     8
+Name: count, dtype: int64
+Data dimensions: 9150
+   roof_type    roof_material  count  percentage
+0       FLAT        BLUE_TARP    336    0.036721
+1       FLAT  CONCRETE_CEMENT   1540    0.168306
+2       FLAT    HEALTHY_METAL     86    0.009399
+3       FLAT       INCOMPLETE     55    0.006011
+4       FLAT  IRREGULAR_METAL    352    0.038470
+5      GABLE        BLUE_TARP    609    0.066557
+6      GABLE  CONCRETE_CEMENT     10    0.001093
+7      GABLE    HEALTHY_METAL   1215    0.132787
+8      GABLE       INCOMPLETE     75    0.008197
+9      GABLE  IRREGULAR_METAL   1413    0.154426
+10       HIP        BLUE_TARP    409    0.044699
+11       HIP  CONCRETE_CEMENT      2    0.000219
+12       HIP    HEALTHY_METAL   1115    0.121858
+13       HIP       INCOMPLETE     46    0.005027
+14       HIP  IRREGULAR_METAL    400    0.043716
+15   NO_ROOF       INCOMPLETE   1487    0.162514
+                                   count  percentage
+roof_type roof_material   dataset                   
+FLAT      BLUE_TARP       TEST        67    0.036612
+                          TRAIN      269         NaN
+          CONCRETE_CEMENT TEST       310    0.169399
+                          TRAIN     1230         NaN
+          HEALTHY_METAL   TEST        17    0.009290
+                          TRAIN       69         NaN
+          INCOMPLETE      TEST        11    0.006011
+                          TRAIN       44         NaN
+          IRREGULAR_METAL TEST        70    0.038251
+                          TRAIN      282         NaN
+GABLE     BLUE_TARP       TEST       112    0.061202
+                          TRAIN      497         NaN
+          CONCRETE_CEMENT TEST         2    0.001093
+                          TRAIN        8         NaN
+          HEALTHY_METAL   TEST       242    0.132240
+                          TRAIN      973         NaN
+          INCOMPLETE      TEST        15    0.008197
+                          TRAIN       60         NaN
+          IRREGULAR_METAL TEST       282    0.154098
+                          TRAIN     1131         NaN
+HIP       BLUE_TARP       TEST        81    0.044262
+                          TRAIN      328         NaN
+          CONCRETE_CEMENT TRAIN        2         NaN
+          HEALTHY_METAL   TEST       223    0.121858
+                          TRAIN      892         NaN
+          INCOMPLETE      TEST         9    0.004918
+                          TRAIN       37         NaN
+          IRREGULAR_METAL TEST        80    0.043716
+                          TRAIN      320         NaN
+NO_ROOF   INCOMPLETE      TEST       297    0.162295
+                          TRAIN     1190         NaN
+image_src
+ORTHO    5936
+DRONE    3214
+Name: count, dtype: int64
+dataset
+TRAIN    7332
+TEST     1818
+Name: count, dtype: int64

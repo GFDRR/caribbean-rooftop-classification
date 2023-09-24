@@ -1,0 +1,7 @@
+rasters_dir: './data/rasters/'
+vectors_dir: './data/vectors/'
+tile_dir: './data/tiles/'
+csv_dir: './data/csv/'
+out_dir: './outputs/'
+exp_dir: './exp/'
+log_dir: './logs/'
