@@ -54,6 +54,7 @@ def read_image(filename, mode):
         src = rio.open(filename)
         image = src.read([1]).squeeze()
         image[image < 0] = 0
+        image = image * 255
         image = Image.fromarray(image, mode="F")
         src.close()
     return image
