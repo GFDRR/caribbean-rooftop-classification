@@ -45,17 +45,17 @@ def get_imagenet_mean_std(mode):
         return [
             0.44531356896770125,
         ], [0.2692461874154524]
-
-
+    
+    
 def read_image(filename, mode):
     if mode == "RGB":
         image = Image.open(filename).convert("RGB")
     elif mode == "LIDAR":
         src = rio.open(filename)
-        image = src.read([1]).squeeze()
+        image = src.read([1]).squeeze() 
         image[image < 0] = 0
-        image = image * 255
-        image = Image.fromarray(image, mode="F")
+        image = image % 255
+        image = Image.fromarray(image)
         src.close()
     return image
 
@@ -118,7 +118,7 @@ def visualize_data(data, data_loader, phase="TEST", mode="RGB", n=4):
                 )
                 axes[i, j].imshow(image)
             elif mode == "LIDAR":
-                axes[i, j].imshow(image, cmap="viridis", norm="linear")
+                axes[i, j].imshow(image, cmap="viridis")
             axes[i, j].set_title(title, fontdict={"fontsize": 7})
             axes[i, j].axis("off")
 
