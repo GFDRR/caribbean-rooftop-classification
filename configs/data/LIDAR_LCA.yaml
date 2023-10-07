@@ -1,0 +1,14 @@
+img_srcs:
+- 'LIDAR'
+attributes: 
+- 'roof_type'
+- 'roof_material'
+aois: 
+- 'LCA'
+bldgs_files: 
+- 'bldgs_ortho_LCA.gpkg'
+LIDAR_source_files: 
+- 'lidar/ndsm_LCA.tif'
+test_size: 0.2
+test_src: 'LIDAR'
+test_aoi: 'LCA'
