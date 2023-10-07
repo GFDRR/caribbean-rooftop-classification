@@ -18,7 +18,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def main(c):    
     # Create experiment folder
-    mode = c['data'].split("_")[0]
+    mode = c['mode']
     exp_name = c['config_name']
     exp_dir = os.path.join(c["exp_dir"], exp_name)
     if not os.path.exists(exp_dir):
