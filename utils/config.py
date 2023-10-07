@@ -23,6 +23,8 @@ def create_config(config_file_exp, prefix=""):
     cfg = EasyDict()
     for k, v in config.items():
         cfg[k] = v
+        if 'data' in k:
+            cfg['mode'] = cfg['data'].split("_")[0]
         if "dir" in k:
             if len(prefix) > 0:
                 cfg[k] = prefix + cfg[k]  
@@ -37,4 +39,6 @@ def load_config(config_file_exp, prefix=""):
     config = create_config(config_file_exp, prefix=prefix)
     config['config_name'] = os.path.basename(config_file_exp).split('.')[0]
     config.update(sys_config)
+    
+    
     return config
