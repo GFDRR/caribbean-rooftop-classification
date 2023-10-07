@@ -1,0 +1,119 @@
+LCA
+Pointer 'hGeom' is NULL in 'OGR_G_GetGeometryType'.
+
+Dimensions (non-null): (2485, 6)
+roof_material
+HEALTHY_METAL      1343
+IRREGULAR_METAL     507
+CONCRETE_CEMENT     326
+INCOMPLETE          309
+Name: count, dtype: int64
+roof_type
+GABLE      1070
+HIP         712
+FLAT        434
+NO_ROOF     269
+Name: count, dtype: int64
+CASTRIES
+Dimensions (non-null): (1084, 27)
+roof_material
+IRREGULAR_METAL    532
+HEALTHY_METAL      502
+INCOMPLETE          28
+CONCRETE_CEMENT     22
+Name: count, dtype: int64
+roof_type
+GABLE      850
+HIP        158
+FLAT        57
+NO_ROOF     19
+Name: count, dtype: int64
+GROSISLET
+Dimensions (non-null): (864, 22)
+roof_material
+HEALTHY_METAL      633
+IRREGULAR_METAL    196
+CONCRETE_CEMENT     20
+INCOMPLETE          15
+Name: count, dtype: int64
+roof_type
+GABLE      538
+HIP        291
+FLAT        23
+NO_ROOF     12
+Name: count, dtype: int64
+DENNERY
+Dimensions (non-null): (742, 31)
+roof_material
+HEALTHY_METAL      516
+IRREGULAR_METAL    154
+INCOMPLETE          37
+CONCRETE_CEMENT     35
+Name: count, dtype: int64
+roof_type
+GABLE      474
+HIP        199
+FLAT        48
+NO_ROOF     21
+Name: count, dtype: int64
+Data dimensions: 5175
+   roof_type    roof_material  count  percentage
+0       FLAT  CONCRETE_CEMENT    400    0.077295
+1       FLAT    HEALTHY_METAL     36    0.006957
+2       FLAT       INCOMPLETE     18    0.003478
+3       FLAT  IRREGULAR_METAL    108    0.020870
+4      GABLE  CONCRETE_CEMENT      2    0.000386
+5      GABLE    HEALTHY_METAL   1791    0.346087
+6      GABLE       INCOMPLETE     41    0.007923
+7      GABLE  IRREGULAR_METAL   1098    0.212174
+8        HIP    HEALTHY_METAL   1167    0.225507
+9        HIP       INCOMPLETE     10    0.001932
+10       HIP  IRREGULAR_METAL    183    0.035362
+11   NO_ROOF  CONCRETE_CEMENT      1    0.000193
+12   NO_ROOF       INCOMPLETE    320    0.061836
+                                   count  percentage
+roof_type roof_material   dataset                   
+FLAT      CONCRETE_CEMENT TEST        75    0.072464
+                          TRAIN      325         NaN
+          HEALTHY_METAL   TEST         7    0.006763
+                          TRAIN       29         NaN
+          INCOMPLETE      TEST         3    0.002899
+                          TRAIN       15         NaN
+          IRREGULAR_METAL TEST        21    0.020290
+                          TRAIN       87         NaN
+GABLE     CONCRETE_CEMENT TRAIN        2         NaN
+          HEALTHY_METAL   TEST       358    0.345894
+                          TRAIN     1433         NaN
+          INCOMPLETE      TEST         8    0.007729
+                          TRAIN       33         NaN
+          IRREGULAR_METAL TEST       219    0.211594
+                          TRAIN      879         NaN
+HIP       HEALTHY_METAL   TEST       233    0.225121
+                          TRAIN      934         NaN
+          INCOMPLETE      TEST         2    0.001932
+                          TRAIN        8         NaN
+          IRREGULAR_METAL TEST        36    0.034783
+                          TRAIN      147         NaN
+NO_ROOF   CONCRETE_CEMENT TRAIN        1         NaN
+          INCOMPLETE      TEST        52    0.050242
+                          TRAIN      268         NaN
+roof_type
+GABLE      2932
+HIP        1360
+FLAT        562
+NO_ROOF     321
+Name: count, dtype: int64
+roof_material
+HEALTHY_METAL      2994
+IRREGULAR_METAL    1389
+CONCRETE_CEMENT     403
+INCOMPLETE          389
+Name: count, dtype: int64
+image_src
+DRONE    2690
+ORTHO    2485
+Name: count, dtype: int64
+dataset
+TRAIN    4161
+TEST     1014
+Name: count, dtype: int64
