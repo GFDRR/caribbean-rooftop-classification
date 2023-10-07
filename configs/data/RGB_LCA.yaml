@@ -1,0 +1,23 @@
+img_srcs:
+- 'RGB'
+attributes: 
+- 'roof_type'
+- 'roof_material'
+aois: 
+- 'LCA'
+- 'CASTRIES'
+- 'GROSISLET'
+- 'DENNERY'
+bldgs_files: 
+- 'bldgs_ortho_LCA.gpkg'
+- 'bldgs_drone_castries_LCA.gpkg'
+- 'bldgs_drone_grosislet_LCA.gpkg'
+- 'bldgs_drone_dennery_LCA.gpkg'
+RGB_source_files: 
+- 'ortho/ortho_LCA.tif'
+- 'drone/drone_castries_LCA.tif'
+- 'drone/drone_grosislet_LCA.tif'
+- 'drone/drone_dennery_LCA.tif'
+test_size: 0.2
+test_src: 'DRONE'
+test_aoi:

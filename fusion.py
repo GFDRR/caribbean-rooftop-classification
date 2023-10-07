@@ -17,28 +17,30 @@ logging.basicConfig(level = logging.INFO)
 
 
 def main(c):
-    out_dir = os.path.join(c["exp_dir"], c["exp_name"])
+    exp_name = c['config_name']
+    out_dir = os.path.join(c["exp_dir"], exp_name)
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
     output_file = os.path.join(out_dir, "output.csv")
 
-    c1 = config.create_config(c["config1"])
-    c2 = config.create_config(c["config2"])
+    c1 = config.load_config(c["config1"])
+    c2 = config.load_config(c["config2"])
     logging.info(c1)
     logging.info(c2)
-    classes = geoutils.classes_dict[c1["attribute"]]
-
+    classes = list(geoutils.get_classes_dict(c1["attribute"]).values())
+    logging.info(classes)
+                   
     if not os.path.exists(output_file):
-        exp_dir = os.path.join(c["exp_dir"], c1["exp_name"])
-        model1 = pred_utils.load_model(c1, exp_dir=exp_dir, n_classes=len(classes))
-        exp_dir = os.path.join(c["exp_dir"], c2["exp_name"])
-        model2 = pred_utils.load_model(c2, exp_dir=exp_dir, n_classes=len(classes))
+        exp_dir = os.path.join(c["exp_dir"], c1["config_name"])
+        model1 = pred_utils.load_model(c1, classes)
+        exp_dir = os.path.join(c["exp_dir"], c2["config_name"])
+        model2 = pred_utils.load_model(c2, classes)
 
-        csv_file = os.path.join(c1["csv_dir"], f"{c1['attribute']}.csv")
+        csv_file = os.path.join(c2["csv_dir"], f"{c2['data']}.csv")
         data = pd.read_csv(csv_file)
 
         def f(x, c):
-            return os.path.join(c["data_dir"], c["attribute"], x.label, x.filename)
+            return os.path.join(c["tile_dir"], c["data"], x.filename)
 
         data["file1"] = data.apply(lambda x: f(x, c1), axis=1)
         data["file2"] = data.apply(lambda x: f(x, c2), axis=1)
@@ -46,19 +48,20 @@ def main(c):
 
         output["UID"] = data.filename.values
         output["dataset"] = data.dataset.values
-        output["label"] = data.label.values
+        output[c1["attribute"]] = data[c1["attribute"]].values
 
         output.to_csv(output_file, index=False)
 
     output = pd.read_csv(output_file)
-    test = output[output.dataset == "test"]
-    train = output[output.dataset == "train"]
+    test = output[output.dataset == "TEST"]
+    train = output[output.dataset == "TRAIN"]
 
     results_dir = os.path.join(out_dir, c["mode"])
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
     # Get results for mean of softmax probabilities
+    target = c1["attribute"]
     if c["mode"] == "fusion_mean":
         preds = test["mean_pred"]
     else:
@@ -66,7 +69,6 @@ def main(c):
         if not os.path.exists(results_dir):
             os.makedirs(results_dir)
         features = fusion_utils.get_features(c, output)
-        target = "label"
 
         cv = model_utils.model_trainer(c, train, features, target)
         logging.info(cv.best_estimator_)
@@ -76,11 +78,11 @@ def main(c):
         model.fit(train[features], train[target].values)
         preds = model.predict(test[features])
 
-        model_file = os.path.join(results_dir, "best_model.pkl")
+        model_file = os.path.join(results_dir, f"{c['config_name']}.pkl")
         joblib.dump(model, model_file)
 
-    results = eval_utils.evaluate(test["label"], preds)
-    cm = eval_utils.get_confusion_matrix(test["label"], preds, classes)
+    results = eval_utils.evaluate(test[target], preds)
+    cm = eval_utils.get_confusion_matrix(test[target], preds, classes)
     eval_utils.save_results(results, cm, results_dir)
 
 
@@ -91,7 +93,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Load config
-    c = config.create_config(args.exp_config)
+    c = config.load_config(args.exp_config)
     logging.info(c)
 
     main(c)
