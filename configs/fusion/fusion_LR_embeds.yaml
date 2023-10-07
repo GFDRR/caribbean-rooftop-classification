@@ -1,5 +1,5 @@
-config1: "./configs/config_09.yaml"
-config2: "./configs/config_06.yaml"
+config1: "./configs/cnn/cnn-roof_type-efficientnetb0-RGB_DOM.yaml"
+config2: "./configs/cnn/cnn-roof_type-inceptionv3-LIDAR_DOM.yaml"
 mode: 'fusion_embeds'
 
 model: 'LogisticRegression'
@@ -15,4 +15,4 @@ cv_params:
    refit: 'f1_score'
    verbose: 2
    n_jobs: -1
-
+   cv: 5
