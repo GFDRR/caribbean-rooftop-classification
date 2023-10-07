@@ -12,6 +12,8 @@ sys.path.insert(0, "./utils/")
 import geoutils
 import cnn_utils
 
+embedding_sizes = {'inceptionv3': 2048, 'resnet50': 2048, 'efficientnetb0': 1280}
+
 
 def extract_probs_embedding(model, c, input_file):
     """Extracts deep feature embeddings from the trained CNN model.
@@ -33,12 +35,12 @@ def extract_probs_embedding(model, c, input_file):
     image = cnn_utils.read_image(input_file, c["mode"])
     transforms = cnn_utils.get_transforms(c["img_size"], c["mode"])
 
-    embedding_size = c["embed_size"]
+    embedding_size = embedding_sizes[c['model']]
     embedding = torch.zeros(embedding_size)
     layer = model._modules.get("avgpool")
     h = layer.register_forward_hook(copy_data)
 
-    output = model(transforms["test"](image).unsqueeze(0))
+    output = model(transforms["TEST"](image).unsqueeze(0))
     probs = nn.softmax(output, dim=1).detach().numpy()[0]
     embedding = embedding.detach().numpy()
 
@@ -54,7 +56,7 @@ def predict(data, c1, c2, model1, model2, source1=None, source2=None, scale=1.5)
         bar_format="{l_bar}{bar:15}{r_bar}{bar:-15b}",
     )
     for index, (_, row) in pbar:
-        classes = geoutils.classes_dict[c1["attribute"]]
+        classes = geoutils.get_classes_dict(c1["attribute"])
 
         if "file1" in data.columns:
             file1 = data.iloc[index].file1
@@ -63,10 +65,7 @@ def predict(data, c1, c2, model1, model2, source1=None, source2=None, scale=1.5)
             if os.path.exists(file1):
                 os.remove(file1)
             shape = data[(data.UID == row["UID"])]
-            geoutils.crop_shape(shape, "temp.shp", scale, source1, file1)
-
-        model1_probs, model1_embeds = extract_probs_embedding(model1, c1, file1)
-        model1_pred = str(classes[np.argmax(model1_probs)])
+            geoutils.crop_shape(shape, scale, source1, file1)
 
         if "file2" in data.columns:
             file2 = data.iloc[index].file2
@@ -74,8 +73,10 @@ def predict(data, c1, c2, model1, model2, source1=None, source2=None, scale=1.5)
             file2 = "temp.tif"
             os.remove(file2)
             shape = data[(data.UID == row["UID"])]
-            geoutils.crop_shape(shape, "temp.shp", scale, source2, file2)
-
+            geoutils.crop_shape(shape, scale, source2, file2)
+        
+        model1_probs, model1_embeds = extract_probs_embedding(model1, c1, file1)
+        model1_pred = str(classes[np.argmax(model1_probs)])
         model2_probs, model2_embeds = extract_probs_embedding(model2, c2, file2)
         model2_pred = str(classes[np.argmax(model2_probs)])
 
