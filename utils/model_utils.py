@@ -150,6 +150,7 @@ def model_trainer(c, data, features, target):
     y = data[target].values
 
     cv = get_cv(c)
+    logging.info(cv)
     cv.fit(X, y)
 
     logging.info("Best estimator: {}".format(cv.best_estimator_))
