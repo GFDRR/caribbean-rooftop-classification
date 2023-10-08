@@ -14,6 +14,8 @@ Mapping Housing Stock Characteristics from VHR Aerial Images for Climate Resilie
 |
 <b><a href="#-file-organization">File Organization</a></b>
 |
+<b><a href="#acknowledgement">Acknowledgment</a></b>
+|
 <b><a href="#citation">Citation</a></b>
 </p>
 
@@ -47,7 +49,7 @@ This repository is divided into three main parts:
 ### Data Generation
 To generate the dataset, run:
 ```s
-python run.py --config="config/data/RGB_DOM.yaml"
+python data.py --config="config/data/RGB_DOM.yaml"
 ```
 You can replace the config by any of the yaml files in `configs/data/`.
 
@@ -93,6 +95,9 @@ data
     ├── bldgs_ortho_DOM.gpkg
     └── ...
 ```
+## Acknowledgement
+This project builds on the work of the [Global Program for Resilient Housing](https://www.worldbank.org/en/topic/disasterriskmanagement/brief/global-program-for-resilient-housing) by the Work Bank. We thank Mike Fedak, Chris Williams, and Sarah Antos for their assistance in providing access to the datasets as well as the insightful discussions on the data landscape in the Caribbean.
+
 
 ## Citation
 ```
