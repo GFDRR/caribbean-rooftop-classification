@@ -75,7 +75,7 @@ python fusion.py --exp_config="config/fusion/fusion_LR_embeds.yaml"
 ```
 You can replace the config by any of the yaml files in `configs/fusion/`.
 
-## File Organization 
+## 📂 File Organization 
 The datasets are organized as follows:
 ```
 data
