@@ -6,11 +6,11 @@ Mapping Housing Stock Characteristics from VHR Aerial Images for Climate Resilie
 <p>
 <b><a href="#-description">Description</a></b>
 |
-<b><a href="#-datasets">Dataset</a></b>
+<b><a href="#-dataset">Dataset</a></b>
 |
 <b><a href="#-code-organization">Code Organization</a></b>
 |
-<b><a href="#-setup">Usage</a></b>
+<b><a href="#-usage">Usage</a></b>
 |
 <b><a href="#-file-organization">File Organization</a></b>
 |
@@ -42,7 +42,7 @@ We annotated ~15k buildings according to two attributes: (1) roof type and (2) r
 
 For data protection purposes, we did not include in this repo the labelled training data. To access the dataset, please reach out at tisabelle@worldbank.org. To use your own data, kindly follow the recommended <a href="#-file-organization">file organization</a>.
 
-## Code Organization 
+## 💻 Code Organization 
 
 This repository is divided into the following main folders and files:
 - **notebooks/**: contains all Jupyter notebooks for exploratory data analysis and model prediction.
