@@ -10,7 +10,7 @@ Mapping Housing Stock Characteristics from VHR Aerial Images for Climate Resilie
 |
 <b><a href="#-code-organization">Code Organization</a></b>
 |
-<b><a href="#-setup">Setup</a></b>
+<b><a href="#-setup">Usage</a></b>
 |
 <b><a href="#-file-organization">File Organization</a></b>
 |
@@ -52,7 +52,22 @@ This repository is divided into the following main folders and files:
 - **train.py**: script for training the CNN model (supports ResNet50, EfficientNet-B0, InceptionV3, and VGG-16)
 - **fusion.py**: script for training the downstream ML classifier based on the combined CNN models trained on RGB and LiDAR data (supports logistic regression, random forest, and linear SVC)
 
-## 💻 Setup
+## 💻 Usage
+
+### Setup
+1. Download anaconda or miniconda.
+2. Create a virtual environment.
+```s
+conda create -n envname python=x.x anaconda
+```
+3. Activate virtual environment.
+```s
+conda activate envname
+```
+4. Install requirements
+```s
+pip install -r requirements.txt
+```
 
 ### Data Generation
 To generate the dataset, run:
