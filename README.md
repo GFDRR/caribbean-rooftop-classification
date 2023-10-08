@@ -38,24 +38,28 @@ We annotated ~15k buildings according to two attributes: (1) roof type and (2) r
 ## Code Organization 
 
 This repository is divided into three main parts:
-- **notebooks/**: contains all Jupyter notebooks for exploratory data analysis.
+- **notebooks/**: contains all Jupyter notebooks for exploratory data analysis and model prediction.
 - **tutorials/**: contains runnable Google Colab notebooks for (1) building footprint delineation using SAM and (2) rooftop classification using CNNs.
 - **utils/**: contains utility methods for loading datasets, building model, and performing training routines. 
 
 ## 💻 Setup
+
+### Data Generation
 To generate the dataset, run:
 ```s
 python run.py --config="config/data/RGB_DOM.yaml"
 ```
 You can replace the config by any of the yaml files in `configs/data/`.
 
+### CNN Model Training
 To train the CNN model, run:
 ```s
 python train.py --exp_config="config/cnn/cnn-roof_material-efficientnetb0-LIDAR_DOM.yaml"
 ```
 You can replace the config by any of the yaml files in `configs/cnn/`.
 
-To train the data fusion model, run:
+### Data Fusion
+To train the data fusion model (RGB + LiDAR), run:
 ```s
 python fusion.py --exp_config="config/fusion/fusion_LR_embeds.yaml"
 ```
