@@ -27,8 +27,8 @@ def get_classes_dict(attribute):
             0: 'INCOMPLETE',
             1: 'HEALTHY_METAL', 
             2: 'IRREGULAR_METAL',
-            3: 'CONCRETE_CEMENT',
-            4: 'BLUE_TARP'
+            3: 'CONCRETE_CEMENT',  
+            4: 'BLUE_TARP',
         },
         "roof_type": {
             0: 'NO_ROOF',
@@ -124,7 +124,7 @@ def inspect_image_crops(
 
 
 def visualize_image_crops(
-    data, column, n_samples=8, n_channels=3, figsize=(15, 10), prefix=''
+    data, column, n_samples=8, n_channels=3, figsize=(15, 10), prefix='', title=True
 ):
     categories = data[column].unique()
     fig, axs = plt.subplots(len(categories), 1, figsize=figsize)
@@ -142,8 +142,9 @@ def visualize_image_crops(
             filename = prefix + item['filepath']
             image = read_image(filename, n_channels)
             show(image, ax=axes[i])
-            title = f"{item.aoi}_{item.UID}"
-            axes[i].set_title(title, fontdict={"fontsize": 9})
+            if title:
+                title = f"{item.aoi}_{item.UID}"
+                axes[i].set_title(title, fontdict={"fontsize": 9})
             remove_ticks(axes[i])
 
 

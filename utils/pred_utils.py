@@ -30,7 +30,11 @@ def predict_image(bldgs, in_file, exp_config, model_file=None, prefix=""):
     c = config.load_config(exp_config, prefix=prefix)
     classes = geoutils.get_classes_dict(c["attribute"])
     logging.info(f"Config: {c}")
+    model = load_model(c, classes, model_file)
+    return predict(bldgs, model, c, in_file, c['out_dir'], classes)
 
+
+def load_model(c, classes, model_file=None):
     if not model_file:
         model_file = os.path.join(
             c["exp_dir"], 
@@ -45,9 +49,10 @@ def predict_image(bldgs, in_file, exp_config, model_file=None, prefix=""):
     model.load_state_dict(torch.load(model_file, map_location=device))
     model = model.to(device)
     model.eval()
-
+    
     logging.info("Model file {} successfully loaded.".format(model_file))
-    return predict(bldgs, model, c, in_file, c['out_dir'], classes)
+    return model
+    
 
 
 def predict(data, model, c, in_file, out_dir, classes, scale=1.5):
