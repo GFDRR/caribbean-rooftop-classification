@@ -49,8 +49,8 @@ This repository is divided into the following main folders and files:
 - **tutorials/**: contains runnable Google Colab notebooks for (1) building footprint delineation using SAM and (2) rooftop classification using CNNs.
 - **utils/**: contains utility methods for loading datasets, building model, and performing training routines. 
 - **data.py**: script for generating labelled image tiles based on the parameters specified in the yaml file located in `configs/data/`
-- **train.py**: script for training the CNN model (supports ResNet50, EfficientNet-B0, InceptionV3, and VGG-16)
-- **fusion.py**: script for training the downstream ML classifier based on the combined CNN models trained on RGB and LiDAR data (supports logistic regression, random forest, and linear SVC)
+- **train.py**: script for training the CNN model based on the parameters specified in the yaml file located in `configs/cnn/` (supports ResNet50, EfficientNet-B0, InceptionV3, and VGG-16)
+- **fusion.py**: script for training the downstream ML classifier based on the combined CNN models trained on RGB and LiDAR data based on the parameters specified in the yaml file located in `configs/fusion/` (supports logistic regression, random forest, and linear SVC)
 
 ## 💻 Usage
 
