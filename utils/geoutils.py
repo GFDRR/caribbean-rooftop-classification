@@ -153,6 +153,7 @@ def crop_shape(shape, scale, in_file, out_file):
     shape.geometry = shape.geometry.scale(scale, scale)
 
     with rio.open(in_file) as src:
+        shape = shape.to_crs(src.crs)
         out_image, out_transform = rasterio.mask.mask(
             src, [shape.iloc[0].geometry], crop=True
         )

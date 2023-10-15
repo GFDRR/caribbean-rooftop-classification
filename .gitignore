@@ -5,6 +5,6 @@ __pycache__/
 .github
 wandb/
 data/
-output/
+outputs/
 exp/
 *temp*
