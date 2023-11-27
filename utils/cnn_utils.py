@@ -36,6 +36,15 @@ import clf_utils
 
 SEED = 42
 
+# Add temporary fix for hash error: https://github.com/pytorch/vision/issues/7744
+from torchvision.models._api import WeightsEnum
+from torch.hub import load_state_dict_from_url
+
+def get_state_dict(self, *args, **kwargs):
+    kwargs.pop("check_hash")
+    return load_state_dict_from_url(self.url, *args, **kwargs)
+WeightsEnum.get_state_dict = get_state_dict
+
 
 def get_imagenet_mean_std(mode):
     """
