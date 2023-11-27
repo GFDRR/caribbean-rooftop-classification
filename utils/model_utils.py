@@ -144,6 +144,20 @@ def get_cv(c):
 
 
 def model_trainer(c, data, features, target):
+    """
+    Trains a machine learning model using the provided data and specified features 
+    to predict the target variable.
+
+    Args:
+    - c (dict): Configuration parameters for the model training.
+    - data (Pandas DataFrame): Input data containing the features and target variable.
+    - features (list): List of feature columns used for training the model.
+    - target (str): The target variable to be predicted.
+
+    Returns:
+    - CV estimator: Trained model using cross-validation.
+    """
+    
     logging.info("Features: {}, Target: {}".format(features, target))
 
     X = data[features]

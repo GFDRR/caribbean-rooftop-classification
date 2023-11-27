@@ -22,6 +22,16 @@ SEED = 42
 
 
 def get_classes_dict(attribute):
+    """
+    Returns a dictionary of classes for a specific attribute.
+
+    Args:
+    - attribute (str): The attribute for which the classes are requested.
+
+    Returns:
+    - dict: A dictionary containing the classes for the specified attribute.
+    """
+    
     classes_dict = {
         "roof_material": {
             0: 'INCOMPLETE',
@@ -41,11 +51,29 @@ def get_classes_dict(attribute):
 
 
 def remove_ticks(ax):
+    """
+    Remove ticks and labels from a matplotlib axis.
+
+    Args:
+    - ax (matplotlib.axis): The axis from which ticks and labels will be removed.
+    """
+    
     ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
     ax.set_axis_off()
 
 
 def read_image(filepath, n_channels=3):
+    """
+    Read an image from a file.
+
+    Args:
+    - filepath (str): The path to the image file.
+    - n_channels (int, optional): The number of channels for the image. Defaults to 3.
+
+    Returns:
+    - numpy.ndarray: The image data as a NumPy array.
+    """
+    
     image = rio.open(filepath)
     if n_channels == 3:
         image = image.read([1, 2, 3])
@@ -56,6 +84,17 @@ def read_image(filepath, n_channels=3):
 
 
 def get_annotated_bldgs(config, index):
+    """
+    Retrieves annotated building data based on configuration parameters and index.
+
+    Args:
+    - config (dict): Configuration settings for accessing vectors and files.
+    - index (int): Index specifying which building file to retrieve.
+
+    Returns:
+    - geopandas.GeoDataFrame: Annotated building data loaded from the specified file.
+    """
+    
     bldgs_path = os.path.join(config["vectors_dir"], config["bldgs_files"][index])
     bldgs = gpd.read_file(bldgs_path)
 
@@ -81,6 +120,21 @@ def inspect_image_crops(
     lidar_data=[],
     prefix=''
 ):
+    """
+    Visualizes image crops from RGB and LIDAR data based on specified conditions.
+
+    Args:
+    - rgb_data (Pandas DataFrame): DataFrame containing RGB image data.
+    - column (str): Column name for filtering values.
+    - value: Value used to filter the 'column' in 'rgb_data'.
+    - index (int, optional): Starting index for image visualization. Defaults to 0.
+    - n_rows (int, optional): Number of rows in the visualization grid. Defaults to 5.
+    - n_cols (int, optional): Number of columns in the visualization grid. Defaults to 5.
+    - figsize (tuple, optional): Size of the visualization figure. Defaults to (15, 10).
+    - lidar_data (list, optional): List containing LIDAR data information. Defaults to [].
+    - prefix (str, optional): Prefix to filepath. Defaults to ''.
+    """
+    
     fig, axes = plt.subplots(n_rows * 2, n_cols, figsize=figsize)
     rgb_data = rgb_data[rgb_data[column] == value].reset_index()
     samples = rgb_data.iloc[index : index + ((n_rows  * 2) * n_cols)].iterrows()
@@ -126,6 +180,19 @@ def inspect_image_crops(
 def visualize_image_crops(
     data, column, n_samples=8, n_channels=3, figsize=(15, 10), prefix='', title=True
 ):
+    """
+    Visualizes image crops based on categories and specified conditions.
+
+    Args:
+    - data (Pandas DataFrame): DataFrame containing image data.
+    - column (str): Column name for categorizing images.
+    - n_samples (int, optional): Number of samples to visualize per category. Defaults to 8.
+    - n_channels (int, optional): Number of channels for the images. Defaults to 3.
+    - figsize (tuple, optional): Size of the visualization figure. Defaults to (15, 10).
+    - prefix (str, optional): Prefix to filepath. Defaults to ''.
+    - title (bool, optional): Flag to include titles for images. Defaults to True.
+    """
+    
     categories = data[column].unique()
     fig, axs = plt.subplots(len(categories), 1, figsize=figsize)
     gridspec = axs[0].get_subplotspec().get_gridspec()
@@ -149,6 +216,16 @@ def visualize_image_crops(
 
 
 def crop_shape(shape, scale, in_file, out_file):
+    """
+    Crops an image based on a scaled shape and saves the cropped image to an output file.
+
+    Args:
+    - shape (GeoPandas GeoDataFrame): GeoDataFrame containing shape information.
+    - scale (float): Scaling factor for the shape.
+    - in_file (str): Path to the input image file.
+    - out_file (str): Path to save the cropped image file.
+    """
+    
     shape.geometry = shape.geometry.apply(lambda x: x.minimum_rotated_rectangle)
     shape.geometry = shape.geometry.scale(scale, scale)
 
@@ -171,6 +248,22 @@ def crop_shape(shape, scale, in_file, out_file):
 
 
 def generate_image_crops(data, in_file, out_path, aoi, scale=1.5, clip=False):
+    """
+    Generates cropped images based on provided data and saves them to an output directory.
+
+    Args:
+    - data (Pandas DataFrame): DataFrame containing information for cropping images.
+    - in_file (str): Path to the input image file.
+    - out_path (str): Path to the output directory for saving cropped images.
+    - aoi (str): Area of interest identifier.
+    - scale (float, optional): Scaling factor for cropping images. Defaults to 1.5.
+    - clip (bool, optional): Flag to clip pixel values to zero or keep negative values. 
+    Defaults to False.
+
+    Returns:
+    - Pandas DataFrame: DataFrame containing information about the generated image crops.
+    """
+    
     if not os.path.isdir(out_path):
         os.makedirs(out_path)
     pbar = tqdm(
@@ -331,6 +424,25 @@ def generate_train_test(
     stratified=True,
     verbose=True,
 ):
+    """
+    Splits the input data into training and testing datasets based on specified parameters.
+
+    Args:
+    - data (Pandas DataFrame): The input dataset to be split.
+    - out_dir (str): Output directory to save the split datasets.
+    - test_size (float): The proportion of the dataset to include in the test split.
+    - attributes (list, optional): List of attributes to consider for stratified splitting. 
+    Defaults to None.
+    - test_aoi (str, optional): Area of interest identifier for the test split. Defaults to None.
+    - test_src (str, optional): Image source identifier for the test split. Defaults to None.
+    - stratified (bool, optional): Flag for performing stratified splitting based on attributes. 
+    Defaults to True.
+    - verbose (bool, optional): Flag to enable verbose logging. Defaults to True.
+
+    Returns:
+    - Pandas DataFrame: The modified input data with a new 'dataset' column indicating the split.
+    """
+    
     data["dataset"] = None
     total_size = len(data)
     test_size = int(total_size * test_size)
