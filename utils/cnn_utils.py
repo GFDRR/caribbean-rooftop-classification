@@ -60,7 +60,7 @@ def get_imagenet_mean_std(mode):
     
     
 def read_image(filename, mode):
-     """
+    """
     Read an image from file based on the specified mode.
 
     Args:
