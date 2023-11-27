@@ -8,15 +8,16 @@ from easydict import EasyDict
 
 
 def create_config(config_file_exp, prefix=""):
-    """Loads YAML config file as dictionary.
+    """Loads a YAML config file and converts it into a dictionary.
 
     Args:
-        config_file_exp (str): Path to config file.
-        prefix (str): Config file prefix.
+        config_file_exp (str): Path to the configuration file.
+        prefix (str): Prefix to be added to file paths in the configuration.
 
     Returns:
-        dict: The config as a dictionary.
+        dict: The loaded configuration as a dictionary.
     """
+    
     with open(config_file_exp, "r") as stream:
         config = yaml.safe_load(stream)
 
@@ -34,6 +35,16 @@ def create_config(config_file_exp, prefix=""):
 
 
 def load_config(config_file_exp, prefix=""):
+    """Loads configuration files with system configurations included.
+
+    Args:
+        config_file_exp (str): Path to the experiment-specific configuration file.
+        prefix (str): Prefix to be added to file paths in the configuration.
+
+    Returns:
+        dict: The loaded configuration as a dictionary.
+    """
+    
     sys_config_file = prefix + "./configs/config.yaml"
     sys_config = create_config(sys_config_file, prefix=prefix)
     config = create_config(config_file_exp, prefix=prefix)

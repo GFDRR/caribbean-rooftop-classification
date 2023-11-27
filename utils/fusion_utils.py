@@ -16,17 +16,17 @@ embedding_sizes = {'inceptionv3': 2048, 'resnet50': 2048, 'efficientnetb0': 1280
 
 
 def extract_probs_embedding(model, c, input_file):
-    """Extracts deep feature embeddings from the trained CNN model.
+    """Extracts class probabilities and feature embeddings from the given image 
+    using the provided CNN model.
     Source: https://becominghuman.ai/extract-a-feature-vector-for-any-image-with-pytorch-9717561d1d4c
 
     Args:
-        model (nn.Module): Neural network to be used for feature extraction.
-        c (dict): Config file.
-        input_file (str): The image file for which to extract the feature embeddings.
+        model (nn.Module): The neural network model for feature extraction.
+        c (dict): Configuration file.
+        input_file (str): Path to the image file for feature extraction.
 
     Returns:
-        array: An array containing the class probabilities.
-        array: An array containing the feature embedding.
+        tuple: A tuple containing the class probabilities array and the feature embedding array.
     """
 
     def copy_data(m, i, o):
@@ -49,6 +49,22 @@ def extract_probs_embedding(model, c, input_file):
 
 
 def predict(data, c1, c2, model1, model2, source1=None, source2=None, scale=1.5):
+    """Predicts using two models and generates output based on specified data.
+
+    Args:
+        data (Pandas DataFrame): The data to perform predictions on.
+        c1 (dict): Configuration for the first model.
+        c2 (dict): Configuration for the second model.
+        model1 (nn.Module): The first neural network model.
+        model2 (nn.Module): The second neural network model.
+        source1 (str, optional): Path to the source for the first model. Defaults to None.
+        source2 (str, optional): Path to the source for the second model. Defaults to None.
+        scale (float, optional): Scaling factor. Defaults to 1.5.
+
+    Returns:
+        Pandas DataFrame: Predicted results based on the specified data.
+    """
+    
     output = []
     pbar = tqdm(
         enumerate(data.iterrows()),
@@ -101,14 +117,15 @@ def predict(data, c1, c2, model1, model2, source1=None, source2=None, scale=1.5)
 
 
 def get_features(c, data):
-    """Returns the list of feature names depending on the fusion strategy.
+    """Returns a list of feature names based on the fusion strategy.
 
     Args:
-        c (dict): Config file.
-        data (Pandas DataFrame): The dataframe of feature embeddings and class probabilities.
+        c (dict): Configuration file.
+        data (Pandas DataFrame): The DataFrame containing feature embeddings and 
+        class probabilities.
 
     Returns:
-        list: Contains a list of string value indicating the feature names.
+        list: A list of strings indicating the feature names based on the fusion strategy.
     """
 
     if c["mode"] == "fusion_probs":

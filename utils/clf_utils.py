@@ -12,8 +12,6 @@ from sklearn.feature_selection import (
     VarianceThreshold,
 )
 from sklearn.decomposition import PCA, IncrementalPCA
-#from imblearn.under_sampling import RandomUnderSampler
-#from imblearn.over_sampling import RandomOverSampler, SMOTE
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import LogisticRegression, SGDClassifier, RidgeClassifier
 from sklearn.ensemble import (
@@ -34,11 +32,7 @@ SCALERS = {
     "RobustScaler": RobustScaler(),
     "MaxAbsScaler": MaxAbsScaler(),
 }
-RESAMPLERS = {
-#    "RandomUnderSampler": RandomUnderSampler(random_state=SEED),
-#    "RandomOverSampler": RandomOverSampler(random_state=SEED),
-#    "SMOTE": SMOTE(),
-}
+RESAMPLERS = {}
 DIM_REDUCE = {"PCA": PCA(), "IncrementalPCA": IncrementalPCA()}
 SELECTORS = {
     "SelectKBest": SelectKBest(),

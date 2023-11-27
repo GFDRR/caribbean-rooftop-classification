@@ -27,6 +27,21 @@ logging.basicConfig(level=logging.INFO)
 
 
 def predict_image(bldgs, in_file, exp_config, n_classes=None, model_file=None, prefix=""):
+    """
+    Predicts classes for buildings using a trained model and input image file.
+
+    Args:
+    - bldgs (GeoDataFrame): Building dataset to predict classes for.
+    - in_file (str): Input image file used for prediction.
+    - exp_config (str): Path to the experiment configuration file.
+    - n_classes (int, optional): Number of classes to consider for prediction.
+    - model_file (str, optional): Path to the trained model file.
+    - prefix (str, optional): Prefix for file paths.
+
+    Returns:
+    - Predictions for the building dataset using the trained model.
+    """
+    
     c = config.load_config(exp_config, prefix=prefix)
     classes = geoutils.get_classes_dict(c["attribute"])
     if n_classes: classes = {k: v for k, v in classes.items() if k < n_classes}
@@ -36,6 +51,18 @@ def predict_image(bldgs, in_file, exp_config, n_classes=None, model_file=None, p
 
 
 def load_model(c, classes, model_file=None):
+    """
+    Loads a pre-trained model based on the provided configuration.
+
+    Args:
+    - c (dict): Configuration dictionary containing model details.
+    - classes (dict): Dictionary containing class labels.
+    - model_file (str, optional): Path to the pre-trained model file.
+
+    Returns:
+    - Loaded pre-trained model based on the provided configuration.
+    """
+    
     if not model_file:
         model_file = os.path.join(
             c["exp_dir"], 
@@ -57,6 +84,22 @@ def load_model(c, classes, model_file=None):
 
 
 def predict(data, model, c, in_file, out_dir, classes, scale=1.5):
+    """
+    Predicts labels and probabilities for the given dataset using the provided model.
+
+    Args:
+    - data (Pandas DataFrame): Input dataset.
+    - model (torch.nn.Module): Trained neural network model.
+    - c (dict): Configuration dictionary.
+    - in_file (str): Path to the input file.
+    - out_dir (str): Directory path to save output files.
+    - classes (dict): Dictionary containing class labels.
+    - scale (float, optional): Scale factor for cropping shapes (default: 1.5).
+
+    Returns:
+    - Results as a GeoDataFrame containing predicted labels and probabilities for the dataset.
+    """
+    
     data = data.reset_index(drop=True)
     mode = c['data'].split("_")[0]
     preds, probs = [], []
@@ -106,6 +149,25 @@ def segment_image(
     min_area=5,
     tolerance=0.000005,
 ):
+    """
+    Segments an input image into polygons based on text prompts and thresholds.
+
+    Args:
+    - image_file (str): Path to the input image file.
+    - out_dir (str): Directory to store intermediate output files.
+    - out_file (str): Output file path to store the segmented polygons.
+    - text_prompt (str): Text prompt used for segmentation.
+    - tile_size (int, optional): Size of tiles for image segmentation (default: 3000).
+    - box_threshold (float, optional): Threshold for box prediction (default: 0.3).
+    - text_threshold (float, optional): Threshold for text prediction (default: 0.3).
+    - max_area (int, optional): Maximum area for polygon merging (default: 1000).
+    - min_area (int, optional): Minimum area for polygon merging (default: 5).
+    - tolerance (float, optional): Tolerance for polygon merging (default: 0.000005).
+
+    Returns:
+    - GeoDataFrame containing segmented polygons from the input image.
+    """
+    
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
@@ -138,6 +200,23 @@ def segment_image(
 def segment_image_crop(
     image, text_prompt, shape, model, out_dir, uid, box_threshold, text_threshold
 ):
+    """
+    Segments a cropped portion of an image based on text prompts and thresholds.
+
+    Args:
+    - image (str): Path to the input image file.
+    - text_prompt (str): Text prompt used for segmentation.
+    - shape (list): List containing the shape for image cropping.
+    - model: The segmentation model used for image processing.
+    - out_dir (str): Directory to store intermediate and output files.
+    - uid (int): Unique identifier for the cropped image.
+    - box_threshold (float): Threshold for box prediction.
+    - text_threshold (float): Threshold for text prediction.
+
+    Returns:
+    - None
+    """
+    
     with rio.open(image) as src:
         out_image, out_transform = rio.mask.mask(src, shape, crop=True)
 
@@ -184,6 +263,22 @@ def segment(
     out_file=None,
     visualize=True,
 ):
+    """
+    Segments an image using a provided model and text prompt.
+
+    Args:
+    - image_file (str): Path to the input image file.
+    - model: The segmentation model used for image processing.
+    - text_prompt (str): Text prompt used for segmentation.
+    - box_threshold (float): Threshold for box prediction.
+    - text_threshold (float): Threshold for text prediction.
+    - out_file (str): Optional. Path to save the segmented output.
+    - visualize (bool): Flag to visualize the segmented result.
+
+    Returns:
+    - None
+    """
+    
     with rio.open(image_file) as src:
         image_np = src.read().transpose((1, 2, 0))
         transform = src.transform
@@ -214,6 +309,18 @@ def segment(
 
 
 def visualize_segmentations(image_pil, boxes, mask_overlay):
+    """
+    Visualizes the segmentation masks overlaid on the input image.
+
+    Args:
+    - image_pil: PIL image representing the input image.
+    - boxes: Predicted bounding boxes for segmentation.
+    - mask_overlay: Overlay of segmentation masks on the image.
+
+    Returns:
+    - mask_overlay: Overlay of segmentation masks on the image.
+    """
+    
     plt.figure(figsize=(10, 10))
     plt.imshow(image_pil)
 
@@ -237,6 +344,19 @@ def visualize_segmentations(image_pil, boxes, mask_overlay):
 
 
 def save_segmentations(filename, mask_overlay, transform, crs):
+    """
+    Saves the segmentation masks overlay as a GeoPackage file.
+
+    Args:
+    - filename: Name of the output file to save the segmentation masks.
+    - mask_overlay: Overlay of segmentation masks.
+    - transform: Transformation information of the original image.
+    - crs: Coordinate reference system of the original image.
+
+    Returns:
+    None
+    """
+    
     mask = mask_overlay.astype("int16")
     results = (
         {"properties": {"raster_val": v}, "geometry": s}

@@ -18,6 +18,21 @@ json.fallback_table[np.ndarray] = lambda array: array.tolist()
 
 
 def save_results(results, cm, exp_dir):
+    """
+    Save evaluation results and confusion matrix to the specified directory.
+
+    Args:
+    - results (dict): Evaluation results to be saved as JSON.
+    - cm (tuple): Tuple containing confusion matrix components (DataFrame, DataFrame, str).
+    - exp_dir (str): Directory path to save the results.
+
+    Saves:
+    - "results.json": JSON file containing the evaluation results.
+    - "confusion_matrix.csv": CSV file containing the confusion matrix data.
+    - "cm_metrics.csv": CSV file containing metrics derived from the confusion matrix.
+    - "cm_report.log": Log file containing the detailed confusion matrix report.
+    """
+    
     with open(os.path.join(exp_dir, "results.json"), "w") as f:
         json.dump(results, f)
     cm[0].to_csv(os.path.join(exp_dir, "confusion_matrix.csv"))
@@ -30,13 +45,13 @@ def get_confusion_matrix(y_true, y_pred, class_names):
     and ground truth values.
 
     Args:
-        y_test (list or numpy array): A list of ground truth values.
-        y_pred (list of numpy array): A list of prediction values.
-        class_names (list): A list of string labels or class names.
+    - y_test (list or numpy array): A list of ground truth values.
+    - y_pred (list of numpy array): A list of prediction values.
+    - class_names (list): A list of string labels or class names.
 
     Returns:
-        pandas DataFrame: The confusion matrix.
-        pandas DataFrame: A dataframe containing the precision,
+    - pandas DataFrame: The confusion matrix.
+    - pandas DataFrame: A dataframe containing the precision,
             recall, and F1 score per class.
     """
 
@@ -61,12 +76,12 @@ def _get_cm_metrics(cm, class_names):
     """Return the precision, recall, and F1 score per class.
 
     Args:
-        cm (pandas DataFrame or numpy array): The confusion matrix.
-        class_names (list): A list of string labels or class names.
+    - cm (pandas DataFrame or numpy array): The confusion matrix.
+    - class_names (list): A list of string labels or class names.
 
     Returns:
-        pandas DataFrame: A dataframe containing the precision,
-            recall, and F1 score per class.
+    - pandas DataFrame: A dataframe containing the precision,
+    recall, and F1 score per class.
     """
 
     metrics = {}
@@ -95,11 +110,11 @@ def evaluate(y_true, y_pred):
     """Returns a dictionary of performance metrics.
 
     Args:
-        y_true (list or numpy array): A list of ground truth values.
-        y_pred (list of numpy array): A list of prediction values.
+    - y_true (list or numpy array): A list of ground truth values.
+    - y_pred (list of numpy array): A list of prediction values.
 
     Returns:
-        dict: A dictionary of performance metrics.
+    - dict: A dictionary of performance metrics.
     """
 
     return {
