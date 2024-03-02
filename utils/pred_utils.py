@@ -20,6 +20,8 @@ import cnn_utils
 import geoutils
 import config
 import sam_utils
+from cnn_utils import GFDRRModel
+from transformers import PreTrainedModel, PretrainedConfig
 
 import logging
 
@@ -50,7 +52,7 @@ def predict_image(bldgs, in_file, exp_config, n_classes=None, model_file=None, p
     return predict(bldgs, model, c, in_file, c['out_dir'], classes)
 
 
-def load_model(c, classes, model_file=None):
+def load_model(c, classes, model_file=None, push_to_hf=False):
     """
     Loads a pre-trained model based on the provided configuration.
 
@@ -73,10 +75,20 @@ def load_model(c, classes, model_file=None):
     n_classes = len(classes)
     mode = c['data'].split("_")[0]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    model = cnn_utils.get_model(c["model"], n_classes, mode, c["dropout"])
-    model.load_state_dict(torch.load(model_file, map_location=device))
+    config = {
+        'model_type':c["model"],
+        'n_classes':n_classes, 
+        'mode':mode, 
+        'dropout':c["dropout"],
+        'model_file':model_file
+    }
+    model = GFDRRModel(config)
     model = model.to(device)
     model.eval()
+    
+    if push_to_hf:
+        model.save_pretrained(f"issatingzon/{c['config_name']}", config=config)
+        model.push_to_hub(f"issatingzon/{c['config_name']}", config=config)
     
     logging.info("Model file {} successfully loaded.".format(model_file))
     return model
