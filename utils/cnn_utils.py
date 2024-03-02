@@ -40,10 +40,10 @@ SEED = 42
 from torchvision.models._api import WeightsEnum
 from torch.hub import load_state_dict_from_url
 
-#def get_state_dict(self, *args, **kwargs):
-#    kwargs.pop("check_hash")
-#    return load_state_dict_from_url(self.url, *args, **kwargs)
-#WeightsEnum.get_state_dict = get_state_dict
+def get_state_dict(self, *args, **kwargs):
+    kwargs.pop("check_hash")
+    return load_state_dict_from_url(self.url, *args, **kwargs)
+WeightsEnum.get_state_dict = get_state_dict
 
 from transformers import PreTrainedModel, PretrainedConfig
 from huggingface_hub import PyTorchModelHubMixin
