@@ -87,7 +87,7 @@ def load_model(c, classes, model_file=None, push_to_hf=False):
         model = model.to(device)
         model.eval()
     else:
-        model = GFDRRModel.from_pretrained(f"issatingzon/{com_c['config_name']}")
+        model = GFDRRModel.from_pretrained(f"issatingzon/{c['config_name']}")
     
     if push_to_hf:
         model.save_pretrained(f"issatingzon/{c['config_name']}", config=config)
