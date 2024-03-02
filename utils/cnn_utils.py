@@ -45,6 +45,99 @@ def get_state_dict(self, *args, **kwargs):
     return load_state_dict_from_url(self.url, *args, **kwargs)
 WeightsEnum.get_state_dict = get_state_dict
 
+from transformers import PreTrainedModel, PretrainedConfig
+from huggingface_hub import PyTorchModelHubMixin
+
+class GFDRRModel(nn.Module, PyTorchModelHubMixin):
+    def __init__(
+        self, 
+        config
+    ):
+        super().__init__()
+        logging.info(config)
+        self.model_type = config["model_type"]
+        self.n_classes = config["n_classes"]
+        self.mode = config["mode"]
+        self.dropout = config["dropout"]
+        self.model = self.get_model()
+        
+            
+    def get_model(self):    
+        if "resnet" in self.model_type:
+            if self.model_type == "resnet18":
+                model = models.resnet18(weights=ResNet18_Weights.DEFAULT)
+            elif self.model_type == "resnet34":
+                model = models.resnet34(weights=ResNet34_Weights.DEFAULT)
+            elif self.model_type == "resnet50":
+                model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
+
+            if self.mode == "LIDAR":
+                # source: https://datascience.stackexchange.com/a/65784
+                weights = model.conv1.weight
+                model.conv1 = nn.Conv2d(
+                    1, 64, kernel_size=7, stride=2, padding=3, bias=False
+                )
+                model.conv1.weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
+
+            num_ftrs = model.fc.in_features
+            if self.dropout > 0:
+                model.fc = nn.Sequential(
+                    nn.Dropout(self.dropout), nn.Linear(num_ftrs, self.n_classes)
+                )
+            else:
+                model.fc = nn.Linear(num_ftrs, n_classes)
+
+        if "inception" in self.model_type:
+            if self.mode == "RGB":
+                model = models.inception_v3(weights=Inception_V3_Weights.IMAGENET1K_V1)
+            elif self.mode == "LIDAR":
+                model = models.inception_v3(
+                    weights=Inception_V3_Weights.IMAGENET1K_V1, transform_input=False
+                )
+                weights = model.Conv2d_1a_3x3.conv.weight.clone()
+                model.Conv2d_1a_3x3.conv = nn.Conv2d(
+                    1, 32, kernel_size=3, stride=2, bias=False
+                )
+                model.Conv2d_1a_3x3.conv.weight = nn.Parameter(
+                    torch.mean(weights, dim=1, keepdim=True)
+                )
+
+            model.aux_logits = False
+            num_ftrs = model.fc.in_features
+            model.fc = nn.Linear(num_ftrs, self.n_classes)
+
+        if "vgg" in self.model_type:
+            model = models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
+            if self.mode == "LIDAR":
+                weights = model.features[0].weight.clone()
+                model.features[0] = nn.Conv2d(
+                    1, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)
+                )
+                model.features[0].weight = nn.Parameter(
+                    torch.mean(weights, dim=1, keepdim=True)
+                )
+
+            num_ftrs = model.classifier[6].in_features
+            model.classifier[6] = nn.Linear(num_ftrs, self.n_classes)
+
+        if "efficientnet" in self.model_type:
+            model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
+            if self.mode == "LIDAR":
+                weights = model.features[0][0].weight.clone()
+                model.features[0][0] = nn.Conv2d(
+                    1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False
+                )
+                model.features[0][0].weight = nn.Parameter(
+                    torch.mean(weights, dim=1, keepdim=True)
+                )
+            num_ftrs = model.classifier[1].in_features
+            model.classifier[1] = nn.Linear(num_ftrs, self.n_classes)
+
+        return model
+    
+    def forward(self, tensor):
+        return self.model.forward(tensor)
+
 
 def get_imagenet_mean_std(mode):
     """
@@ -435,93 +528,6 @@ def get_transforms(size, mode="RGB"):
     }
 
 
-def get_model(model_type, n_classes, mode, dropout=0):
-    """
-    Get a neural network model based on specified parameters.
-
-    Args:
-    - model_type (str): The type of model architecture to use.
-    - n_classes (int): The number of output classes.
-    - mode (str): The mode of the data. Can be "RGB" or "LIDAR".
-    - dropout (float, optional): Dropout rate if applicable. Defaults to 0.
-
-    Returns:
-    - torch.nn.Module: A neural network model based on the specified architecture and mode.
-    """
-    
-    if "resnet" in model_type:
-        if model_type == "resnet18":
-            model = models.resnet18(weights=ResNet18_Weights.DEFAULT)
-        elif model_type == "resnet34":
-            model = models.resnet34(weights=ResNet34_Weights.DEFAULT)
-        elif model_type == "resnet50":
-            model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
-
-        if mode == "LIDAR":
-            # source: https://datascience.stackexchange.com/a/65784
-            weights = model.conv1.weight
-            model.conv1 = nn.Conv2d(
-                1, 64, kernel_size=7, stride=2, padding=3, bias=False
-            )
-            model.conv1.weight = nn.Parameter(torch.mean(weights, dim=1, keepdim=True))
-
-        num_ftrs = model.fc.in_features
-        if dropout > 0:
-            model.fc = nn.Sequential(
-                nn.Dropout(dropout), nn.Linear(num_ftrs, n_classes)
-            )
-        else:
-            model.fc = nn.Linear(num_ftrs, n_classes)
-
-    if "inception" in model_type:
-        if mode == "RGB":
-            model = models.inception_v3(weights=Inception_V3_Weights.IMAGENET1K_V1)
-        elif mode == "LIDAR":
-            model = models.inception_v3(
-                weights=Inception_V3_Weights.IMAGENET1K_V1, transform_input=False
-            )
-            weights = model.Conv2d_1a_3x3.conv.weight.clone()
-            model.Conv2d_1a_3x3.conv = nn.Conv2d(
-                1, 32, kernel_size=3, stride=2, bias=False
-            )
-            model.Conv2d_1a_3x3.conv.weight = nn.Parameter(
-                torch.mean(weights, dim=1, keepdim=True)
-            )
-
-        model.aux_logits = False
-        num_ftrs = model.fc.in_features
-        model.fc = nn.Linear(num_ftrs, n_classes)
-
-    if "vgg" in model_type:
-        model = models.vgg16(weights=VGG16_Weights.IMAGENET1K_V1)
-        if mode == "LIDAR":
-            weights = model.features[0].weight.clone()
-            model.features[0] = nn.Conv2d(
-                1, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)
-            )
-            model.features[0].weight = nn.Parameter(
-                torch.mean(weights, dim=1, keepdim=True)
-            )
-
-        num_ftrs = model.classifier[6].in_features
-        model.classifier[6] = nn.Linear(num_ftrs, n_classes)
-
-    if "efficientnet" in model_type:
-        model = models.efficientnet_b0(weights=EfficientNet_B0_Weights.IMAGENET1K_V1)
-        if mode == "LIDAR":
-            weights = model.features[0][0].weight.clone()
-            model.features[0][0] = nn.Conv2d(
-                1, 32, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), bias=False
-            )
-            model.features[0][0].weight = nn.Parameter(
-                torch.mean(weights, dim=1, keepdim=True)
-            )
-        num_ftrs = model.classifier[1].in_features
-        model.classifier[1] = nn.Linear(num_ftrs, n_classes)
-
-    return model
-
-
 def load_model(
     model_type,
     n_classes,
@@ -561,7 +567,8 @@ def load_model(
     - tuple: A tuple containing the loaded model, criterion, optimizer, and scheduler.
     """
     
-    model = get_model(model_type, n_classes, mode, dropout)
+    #model = get_model(model_type, n_classes, mode, dropout)
+    model = GFDRRModel(model_type, n_classes, mode, dropout)
     model = model.to(device)
     criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
 
