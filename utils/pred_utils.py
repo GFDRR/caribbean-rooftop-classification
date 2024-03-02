@@ -91,7 +91,7 @@ def load_model(c, classes, model_file=None, push_to_hf=False):
         
     
     if push_to_hf:
-        model.save_pretrained(f"issatingzon/{c['config_name']}", config=config, safe_serialization=False)
+        model.save_pretrained(f"issatingzon/{c['config_name']}", config=config)
         model.push_to_hub(f"issatingzon/{c['config_name']}", config=config)
     
     logging.info("Model file {} successfully loaded.".format(model_file))
