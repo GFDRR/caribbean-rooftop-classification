@@ -60,8 +60,6 @@ class GFDRRModel(nn.Module, PyTorchModelHubMixin):
         self.mode = config["mode"]
         self.dropout = config["dropout"]
         self.model = self.get_model()
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.model.load_state_dict(torch.load(config["model_file"], map_location=device))
         
             
     def get_model(self):    

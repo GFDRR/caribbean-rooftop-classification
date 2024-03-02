@@ -80,17 +80,18 @@ def load_model(c, classes, model_file=None, push_to_hf=False):
             'model_type':c["model"],
             'n_classes':n_classes, 
             'mode':mode, 
-            'dropout':c["dropout"],
-            'model_file':model_file
+            'dropout':c["dropout"]
         }
         model = GFDRRModel(config)
+        model.model.load_state_dict(torch.load(model_file, map_location=device))
         model = model.to(device)
         model.eval()
     else:
         model = GFDRRModel.from_pretrained(f"issatingzon/{c['config_name']}")
+        
     
     if push_to_hf:
-        model.save_pretrained(f"issatingzon/{c['config_name']}", config=config)
+        model.save_pretrained(f"issatingzon/{c['config_name']}", config=config, safe_serialization=False)
         model.push_to_hub(f"issatingzon/{c['config_name']}", config=config)
     
     logging.info("Model file {} successfully loaded.".format(model_file))
