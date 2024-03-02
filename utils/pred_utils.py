@@ -72,7 +72,7 @@ def load_model(c, classes, model_file=None, push_to_hf=False):
             f"{c['config_name']}.pth"
         )
     
-    if os.path.existS(model_file):
+    if os.path.exists(model_file):
         n_classes = len(classes)
         mode = c['data'].split("_")[0]
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
