@@ -71,20 +71,23 @@ def load_model(c, classes, model_file=None, push_to_hf=False):
             c['config_name'], 
             f"{c['config_name']}.pth"
         )
-
-    n_classes = len(classes)
-    mode = c['data'].split("_")[0]
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    config = {
-        'model_type':c["model"],
-        'n_classes':n_classes, 
-        'mode':mode, 
-        'dropout':c["dropout"],
-        'model_file':model_file
-    }
-    model = GFDRRModel(config)
-    model = model.to(device)
-    model.eval()
+    
+    if os.path.existS(model_file):
+        n_classes = len(classes)
+        mode = c['data'].split("_")[0]
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        config = {
+            'model_type':c["model"],
+            'n_classes':n_classes, 
+            'mode':mode, 
+            'dropout':c["dropout"],
+            'model_file':model_file
+        }
+        model = GFDRRModel(config)
+        model = model.to(device)
+        model.eval()
+    else:
+        model = GFDRRModel.from_pretrained(f"issatingzon/{com_c['config_name']}")
     
     if push_to_hf:
         model.save_pretrained(f"issatingzon/{c['config_name']}", config=config)
