@@ -55,40 +55,33 @@ This repository is divided into the following main folders and files:
 ## 💻 Usage
 
 ### Setup
-1. Download anaconda or miniconda.
-2. Create a virtual environment.
+Clone the repository and then create and activate a new conda environment:
 ```s
-conda create -n envname python=x.x anaconda
-```
-3. Activate virtual environment.
-```s
+conda create -n envname
 conda activate envname
-```
-4. Install requirements
-```s
 pip install -r requirements.txt
 ```
 
 ### Data Generation
 To generate the dataset, run:
 ```s
-python data.py --config="config/data/RGB_DOM.yaml"
+python data.py \
+--config="config/data/RGB_DOM.yaml"
 ```
-You can replace the config by any of the yaml files in `configs/data/`.
 
 ### CNN Model Training
 To train the CNN model, run:
 ```s
-python train.py --exp_config="config/cnn/cnn-roof_material-efficientnetb0-LIDAR_DOM.yaml"
+python train.py \
+--exp_config="config/cnn/cnn-roof_material-efficientnetb0-LIDAR_DOM.yaml"
 ```
-You can replace the config by any of the yaml files in `configs/cnn/`.
 
 ### Data Fusion
 To train the data fusion model (RGB + LiDAR), run:
 ```s
-python fusion.py --exp_config="config/fusion/fusion_LR_embeds.yaml"
+python fusion.py \
+--exp_config="config/fusion/fusion_LR_embeds.yaml"
 ```
-You can replace the config by any of the yaml files in `configs/fusion/`.
 
 ## 📂 File Organization 
 The datasets are organized as follows:
@@ -124,10 +117,11 @@ This project builds on the work of the [Global Program for Resilient Housing](ht
 
 ## Citation
 ```
-@misc{caribbean_roof_detection_2023,
+@inproceedings{tingzon2023fusing,
   title={Fusing VHR Post-disaster Aerial Imagery and LiDAR Data for Roof Classification in the Caribbean},
   author={Tingzon, Isabelle and Cowan, Nuala Margaret and Chrzanowski, Pierre},
-  journal={arXiv preprint arXiv:2307.16177},
-  year={2023},
+  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
+  pages={3740--3747},
+  year={2023}
 }
 ```
