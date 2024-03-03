@@ -6,11 +6,11 @@ Mapping Housing Stock Characteristics from VHR Aerial Images for Climate Resilie
 <p>
 <b><a href="#-description">Description</a></b>
 |
+<b><a href="#-dataset">Dataset</a></b>
+|
 <b><a href="#-code-organization">Code Organization</a></b>
 |
 <b><a href="#-usage">Usage</a></b>
-|
-<b><a href="#-dataset">Dataset</a></b>
 |
 <b><a href="#-file-organization">File Organization</a></b>
 |
@@ -31,7 +31,17 @@ The Digital Earth for a Resilient Caribbean, a [World Bank](https://www.worldban
 <img src="./assets/results.png" width="70%" height="70%" />
 
 This code accompanies the following paper(s):
-- Tingzon, Isabelle, Nuala Margaret Cowan, Pierre Chrzanowksi. [“Fusing VHR Post-disaster Aerial Imagery and LiDAR Data for Roof Classification in the Caribbean.”](https://arxiv.org/abs/2307.16177) AI for Humanitarian Assistance and Disaster Response (AI+HADR) Workshop at ICCV 2023.
+- Tingzon, I., Cowan, N. M., & Chrzanowski, P. (2023). Fusing VHR Post-disaster Aerial Imagery and LiDAR Data for Roof Classification in the Caribbean. In Proceedings of the IEEE/CVF International Conference on Computer Vision (pp. 3740-3747).
+- Tingzon, I., Cowan, N. M., & Chrzanowski, P. (2023). Mapping Housing Stock Characteristics from Drone Images for Climate Resilience in the Caribbean. Tackling Climate Change with Machine Learning Workshop at NeurIPS 2023. arXiv preprint arXiv:2312.10306.
+
+## 📂 Dataset
+To generate our ground truth dataset, we used the following three data sources for Dominica and Saint Lucia: (1) VHR aerial imagery, (2) LiDAR data (optional), and (3) building footprints in the form of georeferenced vector polygons.
+
+We annotated ~15k buildings according to two attributes: (1) roof type and (2) roof material. The following figures below illustrate examples of the RGB orthophoto and LiDAR-derived image patches.
+<p>
+<img src="./assets/roof-characteristics.png" width="70%" height="70%" />
+
+For data protection purposes, we did not include in this repo the labelled training data. To access the dataset, please reach out at tisabelle@worldbank.org. To use your own data, kindly follow the recommended <a href="#-file-organization">file organization</a>.
 
 ## 💻 Getting Started
 See the following Colab notebooks to get started:
@@ -89,15 +99,6 @@ To train the data fusion model (RGB + LiDAR), run:
 python fusion.py \
 --exp_config="config/fusion/fusion_LR_embeds.yaml"
 ```
-
-## 📂 Dataset
-To generate our ground truth dataset, we used the following three data sources for Dominica and Saint Lucia: (1) VHR aerial imagery, (2) LiDAR data (optional), and (3) building footprints in the form of georeferenced vector polygons.
-
-We annotated ~15k buildings according to two attributes: (1) roof type and (2) roof material. The following figures below illustrate examples of the RGB orthophoto and LiDAR-derived image patches.
-<p>
-<img src="./assets/roof-characteristics.png" width="70%" height="70%" />
-
-For data protection purposes, we did not include in this repo the labelled training data. To access the dataset, please reach out at tisabelle@worldbank.org. To use your own data, kindly follow the recommended <a href="#-file-organization">file organization</a>.
 
 ## 📂 File Organization 
 The datasets are organized as follows:
