@@ -70,7 +70,9 @@ pip install -r requirements.txt
 ```
 
 ### Model Usage
-To load the trained models from Hugging Face, run:
+To load the trained models from Hugging Face, run the following.
+
+A corresponding [model card](https://github.com/GFDRR/caribbean-rooftop-classification/blob/master/MODEL_CARD.md) is included in the repository.
 ```s
 from cnn_utils import GFDRRModel
 
