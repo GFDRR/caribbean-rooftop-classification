@@ -62,7 +62,17 @@ conda activate envname
 pip install -r requirements.txt
 ```
 
-### Data Generation
+### Model Usage
+To load the trained models from Hugging Face, run:
+```s
+from cnn_utils import GFDRRModel
+
+roof_type_model = GFDRRModel.from_pretrained(f"issatingzon/cnn-roof_type-efficientnetb0-RGB_DOM_LCA") 
+roof_material_model_dom = GFDRRModel.from_pretrained(f"issatingzon/cnn-roof_material-resnet50-RGB_DOM") 
+roof_material_model_lca = GFDRRModel.from_pretrained(f"issatingzon/cnn-roof_material-efficientnetb0-RGB_LCA") 
+```
+
+### Data Preparation
 To generate the dataset, run:
 ```s
 python data.py \
@@ -76,7 +86,7 @@ python train.py \
 --exp_config="config/cnn/cnn-roof_material-efficientnetb0-LIDAR_DOM.yaml"
 ```
 
-### Data Fusion
+### Data Fusion (RGB + LiDAR)
 To train the data fusion model (RGB + LiDAR), run:
 ```s
 python fusion.py \
@@ -111,11 +121,20 @@ data
     ├── bldgs_ortho_DOM.gpkg
     └── ...
 ```
+
 ## Acknowledgement
 This project builds on the work of the [Global Program for Resilient Housing](https://www.worldbank.org/en/topic/disasterriskmanagement/brief/global-program-for-resilient-housing) by the Work Bank. We thank Mike Fedak, Chris Williams, and Sarah Antos for their assistance in providing access to the datasets as well as the insightful discussions on the data landscape in the Caribbean.
 
 
 ## Citation
+```
+@article{tingzon2023mapping,
+  title={Mapping Housing Stock Characteristics from Drone Images for Climate Resilience in the Caribbean},
+  author={Tingzon, Isabelle and Cowan, Nuala Margaret and Chrzanowski, Pierre},
+  journal={arXiv preprint arXiv:2312.10306},
+  year={2023}
+}
+```
 ```
 @inproceedings{tingzon2023fusing,
   title={Fusing VHR Post-disaster Aerial Imagery and LiDAR Data for Roof Classification in the Caribbean},
