@@ -85,21 +85,21 @@ roof_material_model_lca = GFDRRModel.from_pretrained(f"issatingzon/cnn-roof_mate
 To generate the dataset, run:
 ```s
 python data.py \
---config="config/data/RGB_DOM.yaml"
+--config="config/data/<DATA_CONFIG>.yaml"
 ```
 
 ### CNN Model Training
 To train the CNN model, run:
 ```s
 python train.py \
---exp_config="config/cnn/cnn-roof_material-efficientnetb0-LIDAR_DOM.yaml"
+--exp_config="config/cnn/<CNN_CONFIG>.yaml"
 ```
 
 ### Data Fusion (RGB + LiDAR)
 To train the data fusion model (RGB + LiDAR), run:
 ```s
 python fusion.py \
---exp_config="config/fusion/fusion_LR_embeds.yaml"
+--exp_config="config/fusion/<FUSION_CONFIG>.yaml"
 ```
 
 ## 📂 File Organization 
@@ -132,10 +132,11 @@ data
 ```
 
 ## Acknowledgement
-This project builds on the work of the [Global Program for Resilient Housing](https://www.worldbank.org/en/topic/disasterriskmanagement/brief/global-program-for-resilient-housing) by the Work Bank. We thank Mike Fedak, Chris Williams, and Sarah Antos for their assistance in providing access to the datasets as well as the insightful discussions on the data landscape in the Caribbean.
+This project builds on the work of the [Global Program for Resilient Housing](https://www.worldbank.org/en/topic/disasterriskmanagement/brief/global-program-for-resilient-housing) by the World Bank. We thank Mike Fedak, Chris Williams, and Sarah Antos for their assistance in providing access to the datasets as well as the insightful discussions on the data landscape in the Caribbean.
 
 
 ## Citation
+If you find this repository useful, please consider giving a star ⭐ and citation 🦖:
 ```
 @article{tingzon2023mapping,
   title={Mapping Housing Stock Characteristics from Drone Images for Climate Resilience in the Caribbean},
