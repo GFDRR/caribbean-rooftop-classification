@@ -31,7 +31,7 @@ The Digital Earth for a Resilient Caribbean, a [World Bank](https://www.worldban
 <img src="./assets/results.png" width="70%" height="70%" />
 
 This code accompanies the following paper(s):
-- Tingzon, I., Cowan, N. M., & Chrzanowski, P. (2023). Fusing VHR Post-disaster Aerial Imagery and LiDAR Data for Roof Classification in the Caribbean. In Proceedings of the IEEE/CVF International Conference on Computer Vision (pp. 3740-3747).
+- Tingzon, I., Cowan, N. M., & Chrzanowski, P. (2023). Fusing VHR Post-disaster Aerial Imagery and LiDAR Data for Roof Classification in the Caribbean. In Proceedings of the IEEE/CVF International Conference on Computer Vision Workshops (pp. 3740-3747).
 - Tingzon, I., Cowan, N. M., & Chrzanowski, P. (2023). Mapping Housing Stock Characteristics from Drone Images for Climate Resilience in the Caribbean. Tackling Climate Change with Machine Learning Workshop at NeurIPS 2023. arXiv preprint arXiv:2312.10306.
 
 ## 📂 Dataset
