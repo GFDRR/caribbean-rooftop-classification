@@ -59,7 +59,7 @@ We refer users to the associated papers for the evaluation results.
 - When considering the DRM application, we note that vulnerability relates only to the characteristics detected in the aerial imagery.
 
 ## Caveats and Recommendations
-- Did not evaluate across different socioeconomic groups or degrees of urbanization. Further work is needed to evaluate the model across a range of socioeconomic groups.
+- We did not evaluate across different socioeconomic groups or degrees of urbanization. Further work is needed to evaluate the model across a range of socioeconomic groups.
 - We urge caution in applying the models off-the-shelf to new geographic contexts (e.g. countries outside of the Caribbean) as the initial results of cross-country cross-validation indicate performance degradation in the face of geographic distribution shift. 
 - The training data for Dominica is derived from VHR post-disaster aerial images taken in the aftermath of Category 5 Hurricane Maria in 2018-2019. Class distributions may have shifted since this period, e.g. the training data consists of 15% blue tarpaulins (which are used to cover severely damaged rooftops), but these blue tarpaulins may not be as prevalent in more recent years due to reparation, reconstruction, and retrofitting initiatives in Dominica. 
 
