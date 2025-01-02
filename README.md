@@ -69,18 +69,6 @@ conda activate envname
 pip install -r requirements.txt
 ```
 
-### Model Usage
-To load the trained models from Hugging Face, run the following.
-
-A corresponding [model card](https://github.com/GFDRR/caribbean-rooftop-classification/blob/master/MODEL_CARD.md) is included in the repository.
-```s
-from cnn_utils import GFDRRModel
-
-roof_type_model = GFDRRModel.from_pretrained(f"issatingzon/cnn-roof_type-efficientnetb0-RGB_DOM_LCA") 
-roof_material_model_dom = GFDRRModel.from_pretrained(f"issatingzon/cnn-roof_material-resnet50-RGB_DOM") 
-roof_material_model_lca = GFDRRModel.from_pretrained(f"issatingzon/cnn-roof_material-efficientnetb0-RGB_LCA") 
-```
-
 ### Data Preparation
 To generate the dataset, run:
 ```s
