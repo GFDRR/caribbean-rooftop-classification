@@ -33,15 +33,6 @@ We recommend following the two tutorials to get started with the models:
 - Part 1: [Building Footprint Delineation for Disaster Risk Reduction and Response (DRR)](https://colab.research.google.com/github/GFDRR/caribbean-rooftop-classification/blob/master/tutorials/01_building_delineation.ipynb)
 - Part 2: [Rooftop Type and Roof Material Classification using Drone Imagery](https://colab.research.google.com/github/GFDRR/caribbean-rooftop-classification/blob/master/tutorials/02_building_classification.ipynb)
 
-To load the models, run the following code:
-```s
-from cnn_utils import GFDRRModel
-
-roof_type_model = GFDRRModel.from_pretrained(f"issatingzon/cnn-roof_type-efficientnetb0-RGB_DOM_LCA") 
-roof_material_model_dom = GFDRRModel.from_pretrained(f"issatingzon/cnn-roof_material-resnet50-RGB_DOM") 
-roof_material_model_lca = GFDRRModel.from_pretrained(f"issatingzon/cnn-roof_material-efficientnetb0-RGB_LCA") 
-```
-
 ## Intended Use
 - Intended to be used for the rapid assessment of housing stock characteristics and building damage in post-disaster contexts on a building-level, specifically in Dominica and Saint Lucia.
 - The work is developed in support of climate resilience initiatives such as the Resilient Housing Scheme 2030 in Dominica, which strives to make 90% of Dominica’s housing stock resilient by 2030.
